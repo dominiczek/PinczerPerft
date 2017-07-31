@@ -1,7 +1,7 @@
 #ifndef MOVE_H
 #define MOVE_H
 
-#include "allMoves.h"
+
 #include "constants.h"
 
 class Move {
@@ -11,7 +11,6 @@ public:
 	U64 maskTo;
 	PIECE_T piece;
 	U64 enPessant;
-	int promotion;
 	int castle;
 
 	inline Move(const PIECE_T piece,  const U64 from, const U64 to, const U64 enPessant = 0) {
@@ -21,20 +20,28 @@ public:
 
 		this->castle = 0;
 		this->enPessant = enPessant;
-		this->promotion = 0;
 	}
 
-	inline Move(const PIECE_T piece, const U64 from, const U64 to, const int promotion) {
+	Move() {
+
+	}
+};
+
+class Promotion : public Move {
+
+public:
+
+	PIECE_T promotion;
+
+	inline Promotion(const PIECE_T piece, const U64 from, const U64 to, const PIECE_T promotion) {
 		this->piece = piece;
 		this->maskFrom = from;
 		this->maskTo = to;
 
-		this->castle = 0;
-		this->enPessant = 0;
 		this->promotion = promotion;
 	}
 
-	Move() {
+	Promotion() {
 
 	}
 };
@@ -43,25 +50,25 @@ class Capture : public Move {
 
 public:
 
+	U64 capturedPieceSquare;
 	PIECE_T capturedPiece;
 
 	inline Capture(const PIECE_T piece,  const U64 from, const U64 to, const PIECE_T capturecPiece) {
 		this->piece = piece;
 		this->maskFrom = from;
 		this->maskTo = to;
+		this->capturedPieceSquare = to;
 
 		this->capturedPiece = capturecPiece;
-
-		this->promotion = 0;
 	}
 
-	inline Capture(const PIECE_T piece,  const int promotion, const U64 from, const U64 to, const PIECE_T capturedPiece) {
+	inline Capture(const PIECE_T piece,  const U64 from, const U64 to, const U64 capturedPieceSquare, const PIECE_T capturecPiece) {
 		this->piece = piece;
 		this->maskFrom = from;
 		this->maskTo = to;
+		this->capturedPieceSquare = capturedPieceSquare;
 
-		this->capturedPiece = capturedPiece;
-		this->promotion = promotion;
+		this->capturedPiece = capturecPiece;
 	}
 
 	Capture() {
@@ -69,52 +76,26 @@ public:
 	}
 };
 
-class MovesList {
+class PromotionCapture : public Capture {
 
-private:
-	Move moves[256];
-	Capture captures[128];
-	Move promotions[32];
-
-	Move *movesHead = moves;
-	Capture *capturesHead = captures;
-	Move *promotionsHead = promotions;
 public:
 
-	MovesList() {
+	PIECE_T promotion;
 
+	inline PromotionCapture(const PIECE_T piece, const U64 from, const U64 to, const PIECE_T promotion, const PIECE_T capturedPiece) {
+		this->piece = piece;
+		this->maskFrom = from;
+		this->maskTo = to;
+		this->capturedPieceSquare = to;
+
+		this->promotion = promotion;
+		this->capturedPiece = capturedPiece;
 	}
 
-	inline void addMove(const Move &move) {
-		*movesHead++=move;
-	}
-	inline void addCapture(const Capture &move) {
-		*capturesHead++=move;
-	}
-	inline void addPromotion(const Move &move) {
-		*promotionsHead++=move;
-	}
-	inline Capture* getCaptures() {
-		return captures;
-	}
-	inline Move* getMoves() {
-		return moves;
-	}
-	inline Move* getPromotions() {
-		return promotions;
-	}
-	inline bool hasNextMove(Move* current) {
-		return movesHead != current;
-	}
-	inline bool hasNextCapture(Capture* current) {
-		return capturesHead != current;
-	}
-	inline bool hasNextPromotion(Move* current) {
-		return promotionsHead != current;
+	PromotionCapture() {
+
 	}
 };
-
-Move* fromString(char* str);
 
 
 #endif

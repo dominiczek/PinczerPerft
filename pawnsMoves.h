@@ -9,13 +9,13 @@
 using namespace std;
 
 template <bool sideToMove>
-inline void generatePawnMoves(const ChessBoard &board, const U64 pawns, MovesList &moveList);
+inline void generatePawnMoves(const ChessBoard &board, const U64 pawns, AllMoves &moveList);
 template <bool sideToMove>
-inline void generateFirstRankPawnMoves(const ChessBoard &board, const U64 pawns, MovesList &moveList);
+inline void generateFirstRankPawnMoves(const ChessBoard &board, const U64 pawns, AllMoves &moveList);
 template <bool sideToMove>
-inline void generatePawnPromotions(const ChessBoard &board, const U64 pawns, MovesList &moveList);
+inline void generatePawnPromotions(const ChessBoard &board, const U64 pawns, AllMoves &moveList);
 template <bool sideToMove>
-inline void generatePawnCaptures(const ChessBoard &board, const U64 pawns, MovesList &moveList);
+inline void generatePawnCaptures(const ChessBoard &board, const U64 pawns, AllMoves &moveList);
 
 template <bool sideToMove>
 inline U64 getFirstPawnRankMask();
@@ -44,7 +44,7 @@ inline U64 getPromotionRankMask<WHITE> () {
 }
 
 template <bool sideToMove>
-void generatePawnsMoves(const ChessBoard &board, MovesList &moveList) {
+void generatePawnsMoves(const ChessBoard &board, AllMoves &moveList) {
 
 	
 	U64 firstRankMask = getFirstPawnRankMask<sideToMove>();
@@ -70,7 +70,7 @@ void generatePawnsMoves(const ChessBoard &board, MovesList &moveList) {
 
 
 template <bool sideToMove>
-void generatePawnMoves(const ChessBoard &board, const U64 pawns, MovesList &moveList) {
+void generatePawnMoves(const ChessBoard &board, const U64 pawns, AllMoves &moveList) {
 	U64 move;
 
 	U64 pawnsMoves = moveForward<sideToMove>(pawns, 8) & ~board.allPieces();
@@ -83,7 +83,7 @@ void generatePawnMoves(const ChessBoard &board, const U64 pawns, MovesList &move
 
 
 template <bool sideToMove>
-void generateFirstRankPawnMoves(const ChessBoard &board, const U64 pawns, MovesList &moveList) {
+void generateFirstRankPawnMoves(const ChessBoard &board, const U64 pawns, AllMoves &moveList) {
 	U64 move;
 
 	U64 pawnMoves = moveForward<sideToMove>(pawns, 8) & ~board.allPieces();
@@ -103,9 +103,9 @@ void generateFirstRankPawnMoves(const ChessBoard &board, const U64 pawns, MovesL
 }
 
 template <bool sideToMove>
-void generatePawnCaptures(const ChessBoard &board, const U64 pawns, MovesList &moveList) {
+void generatePawnCaptures(const ChessBoard &board, const U64 pawns, AllMoves &moveList) {
 
-	U64 toCapture = board.piecesBySide<!sideToMove>() | board.enPessantSqr;
+	U64 toCapture = board.piecesBySide<!sideToMove>();
 	U64 move;
 
 	U64 pawnsToMove = getPawnAttacksLeft<sideToMove>(pawns) & toCapture;
@@ -125,10 +125,23 @@ void generatePawnCaptures(const ChessBoard &board, const U64 pawns, MovesList &m
 		PIECE_T capturedPiece = board.getPieceOnSquare<!sideToMove>(move);
 		moveList.addCapture(Capture(PAWN, from, move, capturedPiece));
 	}
+
+	U64 pawnToDoEnPessant = getPawnAttacksRight<!sideToMove>(board.enPessantSqr) & pawns;
+
+	if(pawnToDoEnPessant) {
+		moveList.addCapture(
+				Capture(PAWN, pawnToDoEnPessant, board.enPessantSqr, moveForward<!sideToMove>(board.enPessantSqr, 8) ,PAWN));
+	}
+
+	pawnToDoEnPessant = getPawnAttacksLeft<!sideToMove>(board.enPessantSqr) & pawns;
+	if(pawnToDoEnPessant) {
+		moveList.addCapture(
+				Capture(PAWN, pawnToDoEnPessant, board.enPessantSqr, moveForward<!sideToMove>(board.enPessantSqr, 8), PAWN));
+	}
 }
 
 template <bool sideToMove>
-void generatePawnPromotions(const ChessBoard &board, const U64 pawns, MovesList &moveList) {
+void generatePawnPromotions(const ChessBoard &board, const U64 pawns, AllMoves &moveList) {
 
 	U64 move;
 	U64 pawnsToMove = moveForward<sideToMove>(pawns, 8) & ~board.allPieces();
@@ -136,10 +149,10 @@ void generatePawnPromotions(const ChessBoard &board, const U64 pawns, MovesList 
 		move = popFirstPiece3(pawnsToMove);
 		U64 from = moveBackward<sideToMove>(move, 8);
 
-		moveList.addPromotion(Move(PAWN, from, move, QUEEN));
-		moveList.addPromotion(Move(PAWN, from, move, ROOK));
-		moveList.addPromotion(Move(PAWN, from, move, KNIGHT));
-		moveList.addPromotion(Move(PAWN, from, move, BISHOP));
+		moveList.addPromotion(Promotion(PAWN, from, move, QUEEN));
+		moveList.addPromotion(Promotion(PAWN, from, move, ROOK));
+		moveList.addPromotion(Promotion(PAWN, from, move, KNIGHT));
+		moveList.addPromotion(Promotion(PAWN, from, move, BISHOP));
 	}
 
 	pawnsToMove = getPawnAttacksLeft<sideToMove>(pawns) & board.piecesBySide<!sideToMove>();
@@ -150,10 +163,10 @@ void generatePawnPromotions(const ChessBoard &board, const U64 pawns, MovesList 
 
 		PIECE_T capturedPiece = board.getPieceOnSquare<!sideToMove>(move);
 
-		moveList.addCapture(Capture(PAWN, QUEEN, from, move, capturedPiece));
-		moveList.addCapture(Capture(PAWN, ROOK, from, move, capturedPiece));
-		moveList.addCapture(Capture(PAWN, KNIGHT, from, move, capturedPiece));
-		moveList.addCapture(Capture(PAWN, BISHOP, from, move, capturedPiece));
+		moveList.addPromotionCapture(PromotionCapture(PAWN, QUEEN, from, move, capturedPiece));
+		moveList.addPromotionCapture(PromotionCapture(PAWN, ROOK, from, move, capturedPiece));
+		moveList.addPromotionCapture(PromotionCapture(PAWN, KNIGHT, from, move, capturedPiece));
+		moveList.addPromotionCapture(PromotionCapture(PAWN, BISHOP, from, move, capturedPiece));
 	}
 
 	pawnsToMove = getPawnAttacksRight<sideToMove>(pawns) & board.piecesBySide<!sideToMove>();
@@ -164,10 +177,10 @@ void generatePawnPromotions(const ChessBoard &board, const U64 pawns, MovesList 
 
 		PIECE_T capturedPiece = board.getPieceOnSquare<!sideToMove>(move);
 
-		moveList.addCapture(Capture(PAWN, QUEEN, from, move, capturedPiece));
-		moveList.addCapture(Capture(PAWN, ROOK, from, move, capturedPiece));
-		moveList.addCapture(Capture(PAWN, KNIGHT, from, move, capturedPiece));
-		moveList.addCapture(Capture(PAWN, BISHOP, from, move, capturedPiece));
+		moveList.addPromotionCapture(PromotionCapture(PAWN, QUEEN, from, move, capturedPiece));
+		moveList.addPromotionCapture(PromotionCapture(PAWN, ROOK, from, move, capturedPiece));
+		moveList.addPromotionCapture(PromotionCapture(PAWN, KNIGHT, from, move, capturedPiece));
+		moveList.addPromotionCapture(PromotionCapture(PAWN, BISHOP, from, move, capturedPiece));
 	}
 }
 

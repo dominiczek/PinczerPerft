@@ -9,7 +9,6 @@
 using namespace std;
 
 
-
 class ChessBoard {
 	
 private:
@@ -68,7 +67,7 @@ public:
 	}
 
 	template <bool sideToMove>
-	inline ChessBoard makePromotion(const Move& move) const {
+	inline ChessBoard makeMove(const Promotion& move) const {
 
 		ChessBoard copy = createCopy(*this);
 
@@ -81,60 +80,34 @@ public:
 	}
 
 	template <bool sideToMove>
-	inline ChessBoard makeCapture(const Capture& move) const {
+	inline ChessBoard makeMove(const Capture& move) const {
 
 		ChessBoard copy = createCopy(*this);
 
-
-		copy.take<!sideToMove>(move.maskTo, move.capturedPiece);
-
-		PIECE_T pieceToAdd = move.promotion ? move.promotion : move.piece;
-
-		if(move.piece == PAWN && move.maskTo == enPessantSqr) {
-			copy.removePiece<!sideToMove>(moveForward<!sideToMove>(enPessantSqr, 8), PAWN);
-		}
+		copy.take<!sideToMove>(move.capturedPieceSquare, move.capturedPiece);
 
 		copy.removePiece<sideToMove>(move.maskFrom, move.piece);
-		copy.addPiece<sideToMove>(move.maskTo, pieceToAdd);
+		copy.addPiece<sideToMove>(move.maskTo, move.piece);
 
 		copy.enPessantSqr = 0;
 
 		return copy;
 	}
 
-
-
 	template <bool sideToMove>
-	inline ChessBoard makePromotionLight(const Move& move) const {
+	inline ChessBoard makeMove(const PromotionCapture& move) const {
 
-		ChessBoard copy = createLightCopy(*this, !sideToMove);
+		ChessBoard copy = createCopy(*this);
 
-		copy.removePiece<sideToMove>(move.maskFrom, PAWN);
-		copy.addPiece<sideToMove>(move.maskTo, move.promotion);
-
-		return copy;
-	}
-
-	template <bool sideToMove>
-	inline ChessBoard makeCaptureLight(const Capture& move) const {
-
-		ChessBoard copy = createLightCopy(*this, !sideToMove);
-
-		copy.take<!sideToMove>(move.maskTo, move.capturedPiece);
-
-		PIECE_T pieceToAdd = move.promotion ? move.promotion : move.piece;
-
-		if(move.piece == PAWN && move.maskTo == enPessantSqr) {
-			copy.removePiece<!sideToMove>(moveForward<!sideToMove>(enPessantSqr, 8), PAWN);
-		}
+		copy.take<!sideToMove>(move.capturedPieceSquare, move.capturedPiece);
 
 		copy.removePiece<sideToMove>(move.maskFrom, move.piece);
-		copy.addPiece<sideToMove>(move.maskTo, pieceToAdd);
+		copy.addPiece<sideToMove>(move.maskTo, move.promotion);
+
+		copy.enPessantSqr = 0;
 
 		return copy;
 	}
-
-
 
 	template <bool sideToMove>
 	inline PIECE_T getPieceOnSquare(const U64 sqrMask) const {
@@ -222,9 +195,9 @@ private:
 
 	template <bool sideToMove>
 	inline void take(U64 mask, PIECE_T capturedPiece) {
-		all_pieces &= ~mask;
-		pieces[sideToMove] &= all_pieces;
-		pieces2[sideToMove][capturedPiece] &= all_pieces;
+		all_pieces -= mask;
+		pieces[sideToMove] -= mask;
+		pieces2[sideToMove][capturedPiece] -= mask;
 	}
 
 };

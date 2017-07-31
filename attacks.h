@@ -39,7 +39,10 @@ inline bool checkCaptureOnPositiveDirection(const U64 pieces, const U64 movesOnD
 
 	if(movesOnDir & attackers) {
 		U64 potentialBlockers = movesOnDir & pieces;
-		return potentialBlockers ? (attackers & getFirstPieceMask(potentialBlockers)): false;
+		if(potentialBlockers && (attackers & getFirstPieceMask(potentialBlockers))) {
+			return true;
+		}
+		//return potentialBlockers ? (attackers & getFirstPieceMask(potentialBlockers)): false;
 	}
 	return false;
 };
@@ -48,7 +51,10 @@ inline bool checkCaptureOnNegativeDirection(const U64 allPieces, const U64 moves
 
 	if(movesOnDir & attackers) {
 		U64 potentialBlockers = movesOnDir & allPieces;
-		return potentialBlockers ? attackers & getLastPieceMask(potentialBlockers): false;
+		if(potentialBlockers && (attackers & getLastPieceMask(potentialBlockers))) {
+			return true;
+		}
+//		return potentialBlockers ? attackers & getLastPieceMask(potentialBlockers): false;
 	}
 	return false;
 };
