@@ -1,7 +1,7 @@
 #ifndef ATTACKS
 #define ATTACKS
 
-#include "allMoves.h"
+#include "moves_provider.h"
 #include "constants.h"
 
 

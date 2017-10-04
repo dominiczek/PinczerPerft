@@ -3,7 +3,6 @@
 
 #include <iostream>
 #include "chessboard.h"
-#include "allMoves.h"
 #include "move.h"
 
 using namespace std;

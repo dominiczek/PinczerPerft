@@ -2,8 +2,8 @@
 #include <time.h>
 
 #include "chessboard.h"
-#include "fenParser.h"
-#include "Perft.h"
+#include "fen_parser.h"
+#include "perft.h"
 
 using namespace std;
 

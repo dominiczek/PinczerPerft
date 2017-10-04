@@ -1,4 +1,4 @@
-#include "fenParser.h"
+#include "fen_parser.h"
 
 #include <iostream>
 #include <ctype.h>

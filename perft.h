@@ -3,8 +3,8 @@
 
 #include "move.h"
 #include "moveList.h"
-#include "pawnsMoves.h"
-#include "movesGenerator.h"
+#include "pawns_moves.h"
+#include "moves_generator.h"
 
 template <bool sideToMove>
 signed long long PerftPromotion(const ChessBoard &board, AllMoves &allMoves, int depth);

@@ -1,4 +1,4 @@
-#include "allMoves.h"
+#include "moves_provider.h"
 
 const U64 kingMoves[64] = {
 	770,

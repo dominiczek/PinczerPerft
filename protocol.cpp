@@ -3,7 +3,7 @@
 #include <cctype>
 #include <string>
 
-#include "fenParser.h"
+#include "fen_parser.h"
 
 using namespace std;
 
