@@ -1,336 +1,192 @@
-#ifndef MOVESGENERATOR_H_
-#define MOVESGENERATOR_H_
+#ifndef MOVES_GENERATOR_H_
+#define MOVES_GENERATOR_H_
+
+#include "legality.h"
 
 template <bool sideToMove>
-inline void generateMovesAndCaptures(const ChessBoard &board, const U64 sqrMask,
-		const int piece, const U64 attacks, AllMoves &moveList) {
-
-	if (!attacks) {
-		return;
+bool isKingSideCastlePossible(const ChessBoard &board) {
+	if(board.allPieces() & shortCastleBlockers[sideToMove]) {
+		return false;
 	}
+
+	if(!board.hasCastleRight<sideToMove>(KING_SIDE)) {
+		return false;
+	}
+
+	if((rookShortCastleSqr[sideToMove] | kingShortCastleSqr[sideToMove]) &
+			PAWNS::getPawnAttacks<!sideToMove>(board.piecesByType<!sideToMove>(PAWN))) {
+		return false;
+	}
+
+	if(!isKingMoveLegal<sideToMove>(board, board.allPieces(), rookShortCastleSqr[sideToMove])) {
+		return false;
+	}
+
+	if(!isKingMoveLegal<sideToMove>(board, board.allPieces(), kingShortCastleSqr[sideToMove])) {
+		return false;
+	}
+
+	return true;
+}
+
+template <bool sideToMove>
+bool isQueenSideCastlePossible(const ChessBoard &board) {
+	if(board.allPieces() & longCastleBlockers[sideToMove]) {
+		return false;
+	}
+
+	if(!board.hasCastleRight<sideToMove>(QUEEN_SIDE)) {
+		return false;
+	}
+
+	if((rookLongCastleSqr[sideToMove] | kingLongCastleSqr[sideToMove]) &
+			PAWNS::getPawnAttacks<!sideToMove>(board.piecesByType<!sideToMove>(PAWN))) {
+		return false;
+	}
+
+	if(!isKingMoveLegal<sideToMove>(board, board.allPieces(), rookLongCastleSqr[sideToMove])) {
+		return false;
+	}
+
+	if(!isKingMoveLegal<sideToMove>(board, board.allPieces(), kingLongCastleSqr[sideToMove])) {
+		return false;
+	}
+
+	return true;
+}
+
+template <bool sideToMove>
+inline void generateMovesAndCapturesForKing(const U64 attacks, const ChessBoard &board, AllMoves &moveList) {
+
+	U64 kingToMove = board.piecesByType<sideToMove>(KING);
 
 	U64 captures = attacks & board.piecesBySide<!sideToMove>();
 	U64 legalMoves = attacks - (attacks & board.allPieces());
 
-	U64 to;
 	while (captures) {
-		to = popFirstPiece3(captures);
+		U64 to = popFirstPieceMask(captures);
 
-		PIECE_T capturedPiece = board.getPieceOnSquare<!sideToMove>(to);
+		Capture capture(KING, kingToMove, to);
 
-		moveList.addCapture(Capture(piece, sqrMask, to, capturedPiece));
+		if(isKingMoveLegal<sideToMove>(board, capture)) {
+			moveList.addCapture(capture);
+		}
 	}
+
+//	if(check) {
+//		legalMoves &= ~board.checkMap;
+//	}
+
 	while (legalMoves) {
-		to = popFirstPiece3(legalMoves);
-		moveList.addMove(Move(piece, sqrMask, to));
-	}
-}
+		U64 to = popFirstPieceMask(legalMoves);
+		Move move(KING, kingToMove, to);
 
-template <bool sideToMove>
-inline bool isSquareAttacked(U64 sqrMask, const ChessBoard& board) {
-	SQUARE_T sqr = getFirstPiece2(sqrMask);
-
-	U64 attacks = kingMoves[sqr];
-	if (attacks & board.piecesByType<sideToMove>(KING)) {
-		return true;
-	}
-
-	U64 pawnsToMove = board.piecesByType<sideToMove>(PAWN);
-
-	if(pawnsToMove & kingMoves[sqr]) {
-		attacks = getPawnAttacks<sideToMove>(pawnsToMove);
-		if (attacks & sqrMask) {
-			return true;
+		if(isKingMoveLegal<sideToMove>(board,  move)) {
+			moveList.addMove(move);
 		}
 	}
-
-	const U64 (*moves) = queenMoves[sqr];
-
-	U64 queenAndRook = board.piecesByType<sideToMove>(ROOK) | board.piecesByType<sideToMove>(QUEEN);
-	U64 queenAndBishop = board.piecesByType<sideToMove>(BISHOP) | board.piecesByType<sideToMove>(QUEEN);
-
-	if (checkCaptureOnPositiveDirection(board.allPieces(), moves[NW], queenAndBishop)) {
-		return true;
-	}
-	if (checkCaptureOnPositiveDirection(board.allPieces(), moves[N], queenAndRook)) {
-		return true;
-	}
-	if (checkCaptureOnPositiveDirection(board.allPieces(), moves[NE], queenAndBishop)) {
-		return true;
-	}
-	if (checkCaptureOnPositiveDirection(board.allPieces(), moves[E], queenAndRook)) {
-		return true;
-	}
-
-
-	if (checkCaptureOnNegativeDirection(board.allPieces(), moves[SE], queenAndBishop)) {
-		return true;
-	}
-	if (checkCaptureOnNegativeDirection(board.allPieces(), moves[S], queenAndRook)) {
-		return true;
-	}
-	if (checkCaptureOnNegativeDirection(board.allPieces(), moves[SW], queenAndBishop)) {
-		return true;
-	}
-	if (checkCaptureOnNegativeDirection(board.allPieces(), moves[W], queenAndRook)) {
-		return true;
-	}
-
-	attacks = knightMoves[sqr];
-	if (attacks & board.piecesByType<sideToMove>(KNIGHT)) {
-		return true;
-	}
-
-	return false;
 }
 
+template <bool sideToMove>
+inline void generateMoves(const ChessBoard &board, const U64 sqrMask,
+		const int piece, const U64 attacks, AllMoves &moveList) {
+
+	U64 legalMoves = attacks - (attacks & board.allPieces());
+
+	while(legalMoves) {
+		U64 to = popFirstPieceMask(legalMoves);
+		Move move(piece, sqrMask, to);
+		moveList.addMove(move);
+	}
+}
 
 template <bool sideToMove>
-inline bool isMoveLegal(const ChessBoard& board, const Move& move) {
+inline void generateCaptures(const ChessBoard &board, const U64 sqrMask,
+		const int piece, const U64 attacks, AllMoves &moveList) {
 
-	U64 allPieces = board.allPieces();
-	allPieces += move.maskTo;
-	allPieces ^= move.maskFrom;
+	U64 captures = attacks & board.piecesBySide<!sideToMove>();
 
-	U64 king = board.piecesByType<!sideToMove>(KING);
-
-	if(king == move.maskFrom) {
-		king = move.maskTo;
+	while (captures) {
+		U64 to = popFirstPieceMask(captures);
+		Capture capture(piece, sqrMask, to);
+		moveList.addCapture(capture);
 	}
+}
 
-//	U64 king = move.piece ? board.myPieces(KING) : move.maskTo;
+template <bool sideToMove, CHECK_T check, PIECE_T piece>
+inline void iterateOverPieces(const ChessBoard& board, AllMoves& movesList) {
+	U64 piecesToMove = board.piecesByType<sideToMove>(piece);
+	while (piecesToMove) {
+		SQUARE_T toMove = getFirstPieceSquare(piecesToMove);
+		U64 sqrMask = popFirstPieceMask(piecesToMove);
+		U64 attacks = MOVE_PROVIDER::getMoves<piece>(board.allPieces(), toMove);
 
+		if(check) {
+			attacks &= board.checkMap;
+		}
 
-	SQUARE_T sqr = getFirstPiece2(king);
-
-	U64 attacks = kingMoves[sqr];
-	if (attacks & board.piecesByType<sideToMove>(KING)) {
-		return false;
+		generateMoves<sideToMove>(board, sqrMask, piece, attacks, movesList);
+		generateCaptures<sideToMove>(board, sqrMask, piece, attacks, movesList);
 	}
+}
 
-	U64 pawnsToMove = board.piecesByType<sideToMove>(PAWN);
+template <bool sideToMove, CHECK_T check, PIECE_T piece>
+inline void iterateOverNotPinnedPieces(const ChessBoard& board, AllMoves& movesList) {
+	U64 piecesToMove = board.notPinnedPiecesByType<sideToMove, piece>();
+	while (piecesToMove) {
+		SQUARE_T toMove = getFirstPieceSquare(piecesToMove);
+		U64 sqrMask = popFirstPieceMask(piecesToMove);
+		U64 attacks = MOVE_PROVIDER::getMoves<piece>(board.allPieces(), toMove);
 
-	if(pawnsToMove & kingMoves[sqr]) {
-		attacks = getPawnAttacks<sideToMove>(pawnsToMove);
-		if (attacks & king) {
-			return false;
+		if(check) {
+			attacks &= board.checkMap;
+		}
+
+		generateMoves<sideToMove>(board, sqrMask, piece, attacks, movesList);
+		generateCaptures<sideToMove>(board, sqrMask, piece, attacks, movesList);
+	}
+}
+
+template <bool sideToMove, CHECK_T check, PIECE_T piece>
+inline void iterateOverPinnedPieces(const ChessBoard& board, AllMoves& movesList) {
+	U64 piecesToMove = board.pinnedPiecesByType<sideToMove, piece>();
+	while (piecesToMove) {
+		SQUARE_T toMove = getFirstPieceSquare(piecesToMove);
+		U64 sqrMask = popFirstPieceMask(piecesToMove);
+		U64 attacks = MOVE_PROVIDER::getMoves<piece>(board.allPieces(), toMove);
+
+
+		if(check) {
+			attacks &= board.checkMap;
+		}
+		attacks &= getDirection(toMove, board.piecesByType<sideToMove>(KING));
+
+		generateCaptures<sideToMove>(board, sqrMask, piece, attacks, movesList);
+		if(check == NO_CHECK) {
+			generateMoves<sideToMove>(board, sqrMask, piece, attacks, movesList);
 		}
 	}
-
-	const U64 (*moves) = queenMoves[sqr];
-
-	U64 queenAndRook = board.piecesByType<sideToMove>(ROOK) | board.piecesByType<sideToMove>(QUEEN);
-	U64 queenAndBishop = board.piecesByType<sideToMove>(BISHOP) | board.piecesByType<sideToMove>(QUEEN);
-
-	if (checkCaptureOnPositiveDirection(allPieces, moves[NW], queenAndBishop)) {
-		return false;
-	}
-	if (checkCaptureOnPositiveDirection(allPieces, moves[N], queenAndRook)) {
-		return false;
-	}
-	if (checkCaptureOnPositiveDirection(allPieces, moves[NE], queenAndBishop)) {
-		return false;
-	}
-	if (checkCaptureOnPositiveDirection(allPieces, moves[E], queenAndRook)) {
-		return false;
-	}
-
-
-	if (checkCaptureOnNegativeDirection(allPieces, moves[SE], queenAndBishop)) {
-		return false;
-	}
-	if (checkCaptureOnNegativeDirection(allPieces, moves[S], queenAndRook)) {
-		return false;
-	}
-	if (checkCaptureOnNegativeDirection(allPieces, moves[SW], queenAndBishop)) {
-		return false;
-	}
-	if (checkCaptureOnNegativeDirection(allPieces, moves[W], queenAndRook)) {
-		return false;
-	}
-
-	attacks = knightMoves[sqr];
-	if (attacks & board.piecesByType<sideToMove>(KNIGHT)) {
-		return false;
-	}
-
-	return true;
 }
 
-template <bool sideToMove>
-inline bool isMoveLegal(const ChessBoard& board, const Capture& move) {
-
-	U64 allPieces = board.allPieces();
-	allPieces -= move.maskFrom;
-
-	U64 king = board.piecesByType<!sideToMove>(KING);
-
-	U64 notCapturedPiecesMask = ~move.capturedPieceSquare;
-
-	if(king == move.maskFrom) {
-		king = move.maskTo;
-	}
-
-	SQUARE_T sqr = getFirstPiece2(king);
-
-	U64 attacks = kingMoves[sqr];
-	if (attacks & board.piecesByType<sideToMove>(KING)) {
-		return false;
-	}
-
-	U64 pawnsToMove = board.piecesByType<sideToMove>(PAWN) & notCapturedPiecesMask;
-
-	if(pawnsToMove & kingMoves[sqr]) {
-
-		attacks = getPawnAttacks<sideToMove>(pawnsToMove);
-		if (attacks & king) {
-			return false;
-		}
-	}
-
-	const U64 (*moves) = queenMoves[sqr];
-
-	U64 queenAndRook = (board.piecesByType<sideToMove>(ROOK) | board.piecesByType<sideToMove>(QUEEN))
-			& notCapturedPiecesMask;
-	U64 queenAndBishop = (board.piecesByType<sideToMove>(BISHOP) | board.piecesByType<sideToMove>(QUEEN))
-			& notCapturedPiecesMask;
-
-	if (checkCaptureOnPositiveDirection(allPieces, moves[NW], queenAndBishop)) {
-		return false;
-	}
-	if (checkCaptureOnPositiveDirection(allPieces, moves[N], queenAndRook)) {
-		return false;
-	}
-	if (checkCaptureOnPositiveDirection(allPieces, moves[NE], queenAndBishop)) {
-		return false;
-	}
-	if (checkCaptureOnPositiveDirection(allPieces, moves[E], queenAndRook)) {
-		return false;
-	}
-
-
-	if (checkCaptureOnNegativeDirection(allPieces, moves[SE], queenAndBishop)) {
-		return false;
-	}
-	if (checkCaptureOnNegativeDirection(allPieces, moves[S], queenAndRook)) {
-		return false;
-	}
-	if (checkCaptureOnNegativeDirection(allPieces, moves[SW], queenAndBishop)) {
-		return false;
-	}
-	if (checkCaptureOnNegativeDirection(allPieces, moves[W], queenAndRook)) {
-		return false;
-	}
-
-	attacks = knightMoves[sqr];
-	if (attacks & (board.piecesByType<sideToMove>(KNIGHT) & notCapturedPiecesMask)) {
-		return false;
-	}
-
-	return true;
-}
-
-template <bool sideToMove>
+template <bool sideToMove, CHECK_T check>
 inline void generateMoves(const ChessBoard& board, AllMoves& movesList) {
 
-	SQUARE_T toMove;
-	U64 attacks;
-	U64 sqrMask;
+	if(board.getPinnedPieces()) {
+		iterateOverNotPinnedPieces<sideToMove, check, QUEEN>(board, movesList);
+		iterateOverNotPinnedPieces<sideToMove, check, BISHOP>(board, movesList);
+		iterateOverNotPinnedPieces<sideToMove, check, ROOK>(board, movesList);
+		iterateOverNotPinnedPieces<sideToMove, check, KNIGHT>(board, movesList);
 
-	U64 queensToMove = board.piecesByType<sideToMove>(QUEEN);
-	while (queensToMove) {
-		sqrMask = popFirstPiece3(queensToMove, toMove);
-		attacks = getPieceAttacks<QUEEN>(board.allPieces(), toMove);
-		generateMovesAndCaptures<sideToMove>(board, sqrMask, QUEEN, attacks, movesList);
+		iterateOverPinnedPieces<sideToMove, check, QUEEN>(board, movesList);
+		iterateOverPinnedPieces<sideToMove, check, BISHOP>(board, movesList);
+		iterateOverPinnedPieces<sideToMove, check, ROOK>(board, movesList);
+	} else {
+		iterateOverPieces<sideToMove, check, QUEEN>(board, movesList);
+		iterateOverPieces<sideToMove, check, BISHOP>(board, movesList);
+		iterateOverPieces<sideToMove, check, ROOK>(board, movesList);
+		iterateOverPieces<sideToMove, check, KNIGHT>(board, movesList);
 	}
-
-	U64 bishopsToMove = board.piecesByType<sideToMove>(BISHOP);
-	while (bishopsToMove) {
-		sqrMask = popFirstPiece3(bishopsToMove, toMove);
-		attacks = getPieceAttacks<BISHOP>(board.allPieces(), toMove);
-		generateMovesAndCaptures<sideToMove>(board, sqrMask, BISHOP, attacks, movesList);
-	}
-
-	U64 rooksToMove = board.piecesByType<sideToMove>(ROOK);
-	while (rooksToMove) {
-		sqrMask = popFirstPiece3(rooksToMove, toMove);
-		attacks = getPieceAttacks<ROOK>(board.allPieces(), toMove);
-		generateMovesAndCaptures<sideToMove>(board, sqrMask, ROOK, attacks, movesList);
-	}
-
-	U64 knightsToMove = board.piecesByType<sideToMove>(KNIGHT);
-	while (knightsToMove) {
-		sqrMask = popFirstPiece3(knightsToMove, toMove);
-		attacks = getPieceAttacks<KNIGHT>(board.allPieces(), toMove);
-		generateMovesAndCaptures<sideToMove>(board, sqrMask, KNIGHT, attacks, movesList);
-	}
-
-	U64 kingToMove = board.piecesByType<sideToMove>(KING);
-	toMove = getFirstPiece2(kingToMove);
-
-	attacks = getKingAttack(toMove);
-
-	generateMovesAndCaptures<sideToMove>(board, kingToMove, KING, attacks, movesList);
 }
 
-
-template <bool sideToMove>
-inline void generateMoves2(const ChessBoard& board, AllMoves& movesList) {
-
-	SQUARE_T toMove;
-	U64 attacks;
-	U64 sqrMask;
-
-	U64 queensToMove = board.piecesByType<sideToMove>(QUEEN);
-	if (queensToMove) {
-		//sqrMask=getFirstPiece3(queensToMove, toMove);
-		toMove = getFirstPiece2(queensToMove);
-		attacks = getPieceAttacks<QUEEN>(board.allPieces(), toMove);
-		generateMovesAndCaptures<sideToMove>(board, queensToMove, QUEEN, attacks, movesList);
-	}
-
-	U64 bishopsToMove = board.piecesByType<sideToMove>(BISHOP);
-	if (bishopsToMove) {
-		sqrMask = popFirstPiece3(bishopsToMove, toMove);
-		attacks = getPieceAttacks<BISHOP>(board.allPieces(), toMove);
-		generateMovesAndCaptures<sideToMove>(board, sqrMask, BISHOP, attacks, movesList);
-		if (bishopsToMove) {
-			toMove = getFirstPiece2(bishopsToMove);
-			attacks = getPieceAttacks<BISHOP>(board.allPieces(), toMove);
-			generateMovesAndCaptures<sideToMove>(board, bishopsToMove, BISHOP, attacks, movesList);
-		}
-	}
-
-	U64 rooksToMove = board.piecesByType<sideToMove>(ROOK);
-	if (rooksToMove) {
-		sqrMask = popFirstPiece3(rooksToMove, toMove);
-		attacks = getPieceAttacks<ROOK>(board.allPieces(), toMove);
-		generateMovesAndCaptures<sideToMove>(board, sqrMask, ROOK, attacks, movesList);
-		if (rooksToMove) {
-			toMove = getFirstPiece2(rooksToMove);
-			attacks = getPieceAttacks<ROOK>(board.allPieces(), toMove);
-			generateMovesAndCaptures<sideToMove>(board, rooksToMove, ROOK, attacks, movesList);
-		}
-	}
-
-	U64 knightsToMove = board.piecesByType<sideToMove>(KNIGHT);
-	if (knightsToMove) {
-		sqrMask = popFirstPiece3(knightsToMove, toMove);
-		attacks = getPieceAttacks<KNIGHT>(board.allPieces(), toMove);
-		generateMovesAndCaptures<sideToMove>(board, sqrMask, KNIGHT, attacks, movesList);
-		if (knightsToMove) {
-			toMove = getFirstPiece2(knightsToMove);
-			attacks = getPieceAttacks<KNIGHT>(board.allPieces(), toMove);
-			generateMovesAndCaptures<sideToMove>(board, knightsToMove, KNIGHT, attacks, movesList);
-		}
-	}
-
-	U64 kingToMove = board.piecesByType<sideToMove>(KING);
-	toMove = getFirstPiece2(kingToMove);
-
-	attacks = getKingAttack(toMove);
-
-	generateMovesAndCaptures<sideToMove>(board, kingToMove, KING, attacks, movesList);
-}
 
 #endif

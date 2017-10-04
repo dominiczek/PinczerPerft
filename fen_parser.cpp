@@ -4,17 +4,35 @@
 #include <ctype.h>
 #include <string.h>
 #include "chessboard.h"
+#include <vector>
 
 using namespace std;
 
-int fieldCodeToField(char* moveCode) {
+int FEN_PARSER::fieldCodeToField(char* moveCode) {
 	char x = tolower(moveCode[0]) - 97;
 	char y = moveCode[1] - 49;
 	
 	return y*8 + x;
 }
 
-bool parseFen(ChessBoard& board, char* fenString) {
+vector<string> split(const char *str, char c = ' ')
+{
+    vector<string> result;
+
+    do
+    {
+        const char *begin = str;
+
+        while(*str != c && *str)
+            str++;
+
+        result.push_back(string(begin, str));
+    } while (0 != *str++);
+
+    return result;
+}
+
+bool FEN_PARSER::parseFen(ChessBoard& board, char* fenString) {
 	
 	bool sideToMove;
 
@@ -64,30 +82,32 @@ bool parseFen(ChessBoard& board, char* fenString) {
 	}
 	
 	c = fenString[++++stringIndex];
-	
-	
+
+	CASTLE_T castleW = 0, castleB = 0;
 	
 	if(c == '-') {
 	} else {
 		while(c!=' ') {
 			if(c=='K') {
-				board.castleKingW = true;
+				castleW += KING_SIDE;
 				cout<<"King side W"<<endl;
 			}
 			if(c=='k') {
-				board.castleKingB = true;	
+				castleB += KING_SIDE;
 				cout<<"King side B"<<endl;
 			}
 			if(c=='Q') {
-				board.castleQueenW = true;			
+				castleW += QUEEN_SIDE;
 				cout<<"Queen side W"<<endl;
 			}
 			if(c=='q') {
-				board.castleQueenB = true;		
-				cout<<"King side W"<<endl;
+				castleB += QUEEN_SIDE;
+				cout<<"Queen side B"<<endl;
 			}
 			c = fenString[++stringIndex];
 		}
+		board.setCastle(castleW, WHITE);
+		board.setCastle(castleB, BLACK);
 	}
 		
 	char enpessant[2];	

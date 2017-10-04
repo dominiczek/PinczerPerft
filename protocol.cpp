@@ -11,7 +11,7 @@ using namespace std;
 
 int main3(int argc, char** argv) {
 	
-	cout<<fieldCodeToField("a1");
+	cout<<FEN_PARSER::fieldCodeToField("a1");
 	
 	string line;
 	while(true) {

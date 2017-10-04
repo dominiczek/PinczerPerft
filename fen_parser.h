@@ -3,8 +3,11 @@
 
 #include "chessboard.h"
 
-bool parseFen(ChessBoard &board, char* fenString);
+namespace FEN_PARSER {
 
-int fieldCodeToField(char* moveCode);
+	bool parseFen(ChessBoard &board, char* fenString);
 
+	int fieldCodeToField(char* moveCode);
+
+}
 #endif

@@ -1,11 +1,10 @@
-#ifndef MOVE_GENERATOR_H
-#define MOVE_GENERATOR_H
+#ifndef PAWNS_H_
+#define PAWNS_H_
 
 #include <iostream>
 #include "chessboard.h"
-#include "move.h"
-
-using namespace std;
+#include "legality.h"
+#include "moves.h"
 
 template <bool sideToMove>
 inline void generatePawnMoves(const ChessBoard &board, const U64 pawns, AllMoves &moveList);
@@ -16,174 +15,261 @@ inline void generatePawnPromotions(const ChessBoard &board, const U64 pawns, All
 template <bool sideToMove>
 inline void generatePawnCaptures(const ChessBoard &board, const U64 pawns, AllMoves &moveList);
 
-template <bool sideToMove>
-inline U64 getFirstPawnRankMask();
 
-template <>
-inline U64 getFirstPawnRankMask<BLACK> () {
-	return BLACK_FIRST_RANK_PAWNS;
-}
-
-template <>
-inline U64 getFirstPawnRankMask<WHITE> () {
-	return WHITE_FIRST_RANK_PAWNS;
-}
-
-template <bool sideToMove>
-inline U64 getPromotionRankMask();
-
-template <>
-inline U64 getPromotionRankMask<BLACK> () {
-	return BLACK_PROMOTION_RANK_PAWNS;
-}
-
-template <>
-inline U64 getPromotionRankMask<WHITE> () {
-	return WHITE_PROMOTION_RANK_PAWNS;
-}
-
-template <bool sideToMove>
+template <bool sideToMove, CHECK_T check>
 void generatePawnsMoves(const ChessBoard &board, AllMoves &moveList) {
 
-	
-	U64 firstRankMask = getFirstPawnRankMask<sideToMove>();
-	U64 promotionRankMask = getPromotionRankMask<sideToMove>();
+	U64 firstRankMask = PAWNS::getFirstPawnRankMask<sideToMove>();
+	U64 promotionRankMask = PAWNS::getPromotionRankMask<sideToMove>();
 	
 	U64 pawnsToMove = board.piecesByType<sideToMove>(PAWN);
 	U64 firstRankPawns = pawnsToMove & firstRankMask;
 	U64 promotionPawns = pawnsToMove & promotionRankMask;
 
 	if(promotionPawns) {
-		generatePawnPromotions<sideToMove>(board, promotionPawns, moveList);
+		generatePawnPromotions<sideToMove, check>(board, promotionPawns, moveList);
 		pawnsToMove -= promotionPawns;
 	}
 
-	generatePawnCaptures<sideToMove>(board, pawnsToMove, moveList);
+
+	generatePawnCaptures<sideToMove, check>(board, pawnsToMove, moveList);
 
 
-	generateFirstRankPawnMoves<sideToMove>(board, firstRankPawns, moveList);
+
+	generateFirstRankPawnMoves<sideToMove, check>(board, firstRankPawns, moveList);
+
 	pawnsToMove -= firstRankPawns;
-	generatePawnMoves<sideToMove>(board, pawnsToMove, moveList);
-
+	generatePawnMoves<sideToMove, check>(board, pawnsToMove, moveList);
 }
 
 
-template <bool sideToMove>
-void generatePawnMoves(const ChessBoard &board, const U64 pawns, AllMoves &moveList) {
-	U64 move;
+template <bool sideToMove, CHECK_T isCheck>
+void generatePawnMoves(const ChessBoard &board,  const U64 pawns, AllMoves &moveList) {
 
-	U64 pawnsMoves = moveForward<sideToMove>(pawns, 8) & ~board.allPieces();
-	while(pawnsMoves) {
-		move = popFirstPiece3(pawnsMoves);
+	U64 notPinedPawns = pawns & ~board.pinnedPawns;
+	U64 legalPawnMoves = moveForward<sideToMove>(notPinedPawns, 8) & ~board.allPieces();
+
+	if(isCheck == CHECK){
+		legalPawnMoves &= board.checkMap;
+	}
+
+	while(legalPawnMoves) {
+		U64 move = popFirstPieceMask(legalPawnMoves);
 		U64 from = moveBackward<sideToMove>(move, 8);
-		moveList.addMove(Move(PAWN, from, move));
+		Move m(PAWN, from, move);
+		moveList.addMove(m);
 	}
 }
 
 
 template <bool sideToMove>
-void generateFirstRankPawnMoves(const ChessBoard &board, const U64 pawns, AllMoves &moveList) {
-	U64 move;
+void generateFirstRankPawnMovesCheck(const ChessBoard &board,  const U64 pawns, AllMoves &moveList) {
 
-	U64 pawnMoves = moveForward<sideToMove>(pawns, 8) & ~board.allPieces();
-	//U64 pawnMovesTwoSqr = moveForward(pawns, 8, board.sideToMove) & ~board.allPieces;
+	U64 legalPawnMoves = moveForward<sideToMove>(pawns, 8) & ~board.allPieces();
+	U64 legalTowSquareMoves = moveForward<sideToMove>(legalPawnMoves, 8) & ~board.allPieces();
 
-	U64 moveByTwoSqr;// = moveForward(pawnMoves, 8, board.sideToMove) & ~board.allPieces;
-	while(pawnMoves) {
-		move = popFirstPiece3(pawnMoves);
+	legalPawnMoves &= board.checkMap;
+	legalTowSquareMoves &= board.checkMap;
+
+
+
+	while(legalPawnMoves) {
+		U64 move = popFirstPieceMask(legalPawnMoves);
 		U64 from = moveBackward<sideToMove>(move, 8);
-		moveList.addMove(Move(PAWN, from, move));
-		moveByTwoSqr = moveForward<sideToMove>(move, 8);
-		if(moveByTwoSqr & ~board.allPieces()) {
-			moveList.addMove(Move(PAWN, from, moveByTwoSqr, move));
+
+		Move m(PAWN, from, move);
+		moveList.addMove(m);
+	}
+
+	U64 enPassantPawns = board.piecesByType<!sideToMove>(PAWN)& EN_PASSANT_RANK[!sideToMove];
+	U64 enPassantAttacks = PAWNS::getPawnAttacks<!sideToMove>(enPassantPawns);
+
+
+	while(legalTowSquareMoves) {
+		U64 move = popFirstPieceMask(legalTowSquareMoves);
+		U64 enPassant = moveBackward<sideToMove>(move, 8);
+		U64 from = moveBackward<sideToMove>(enPassant, 8);
+
+		PawnMove m(PAWN, from, move, (enPassant & enPassantAttacks)? enPassant:0);
+
+		moveList.addMove(m);
+	}
+}
+
+template <bool sideToMove, CHECK_T check>
+void generateFirstRankPawnMoves(const ChessBoard &board,  const U64 pawns, AllMoves &moveList) {
+
+	U64 notPinedPawns = pawns & (~board.pinnedPawns);
+
+	if(check == CHECK) {
+		generateFirstRankPawnMovesCheck<sideToMove>(board, notPinedPawns, moveList);
+	} else {
+
+		U64 enPassantPawns = board.piecesByType<!sideToMove>(PAWN)& EN_PASSANT_RANK[!sideToMove];
+
+		U64 enPassantAttacks = PAWNS::getPawnAttacks<!sideToMove>(enPassantPawns);
+
+		U64 legalPawnMoves = moveForward<sideToMove>(notPinedPawns, 8) & ~board.allPieces();
+
+		while(legalPawnMoves) {
+			U64 move = popFirstPieceMask(legalPawnMoves);
+			U64 from = moveBackward<sideToMove>(move, 8);
+
+			Move m(PAWN, from, move);
+
+			moveList.addMove(m);
+
+			U64 moveByTwoSqr = moveForward<sideToMove>(move, 8);
+			if(moveByTwoSqr & ~board.allPieces()) {
+
+				PawnMove m2(PAWN, from, moveByTwoSqr, (move & enPassantAttacks)? move:0);
+				moveList.addMove(m2);
+			}
 		}
 	}
 
+
 }
 
-template <bool sideToMove>
-void generatePawnCaptures(const ChessBoard &board, const U64 pawns, AllMoves &moveList) {
+template <bool sideToMove, CHECK_T check>
+void generatePawnCaptures(const ChessBoard &board,  const U64 pawns, AllMoves &moveList) {
+
+	U64 pawnAttacksL = PAWNS::getPawnAttacksLeft<sideToMove>(pawns);
+	U64 pawnAttacksR = PAWNS::getPawnAttacksRight<sideToMove>(pawns);
+
+	if(pawnAttacksL & board.enPessantSqr) {
+	    U64 pawnToDoEnPessant = PAWNS::getPawnAttacksRight<!sideToMove>(board.enPessantSqr);
+	    PawnCapture capture(PAWN, pawnToDoEnPessant, board.enPessantSqr, moveForward<!sideToMove>(board.enPessantSqr, 8));
+
+		if(isEnPassantMoveLegal<sideToMove>(board, capture)) {
+			moveList.addCapture(capture);
+		}
+	}
+
+	if(pawnAttacksR & board.enPessantSqr) {
+		U64 pawnToDoEnPessant = PAWNS::getPawnAttacksLeft<!sideToMove>(board.enPessantSqr);
+		PawnCapture capture(PAWN, pawnToDoEnPessant, board.enPessantSqr, moveForward<!sideToMove>(board.enPessantSqr, 8));
+
+		if(isEnPassantMoveLegal<sideToMove>(board, capture)) {
+			moveList.addCapture(capture);
+		}
+	}
 
 	U64 toCapture = board.piecesBySide<!sideToMove>();
-	U64 move;
 
-	U64 pawnsToMove = getPawnAttacksLeft<sideToMove>(pawns) & toCapture;
-	while(pawnsToMove) {
-		move = popFirstPiece3(pawnsToMove);
-		U64 from = getPawnBackwardMoveLeft<sideToMove>(move);
-
-		PIECE_T capturedPiece = board.getPieceOnSquare<!sideToMove>(move);
-		moveList.addCapture(Capture(PAWN, from, move, capturedPiece));
+	if(check == CHECK) {
+		toCapture &= board.checkMap;
 	}
 
-	pawnsToMove = getPawnAttacksRight<sideToMove>(pawns) & toCapture;
-	while(pawnsToMove) {
-		move = popFirstPiece3(pawnsToMove);
-		U64 from = getPawnBackwardMoveRight<sideToMove>(move);
+	U64 pawnsToMoveL = pawnAttacksL & toCapture;
+	U64 pawnsToMoveR = pawnAttacksR & toCapture;
 
-		PIECE_T capturedPiece = board.getPieceOnSquare<!sideToMove>(move);
-		moveList.addCapture(Capture(PAWN, from, move, capturedPiece));
+
+	while(pawnsToMoveL) {
+		U64 move = popFirstPieceMask(pawnsToMoveL);
+		U64 from = PAWNS::getPawnBackwardMoveLeft<sideToMove>(move);
+
+		if(from & board.getPinnedPieces()) {
+			if(move & board.pinnedPiecesB) {
+				Capture capture(PAWN, from, move);
+				moveList.addCapture(capture);
+			}
+		} else {
+			Capture capture(PAWN, from, move);
+			moveList.addCapture(capture);
+		}
 	}
 
-	U64 pawnToDoEnPessant = getPawnAttacksRight<!sideToMove>(board.enPessantSqr) & pawns;
+	while(pawnsToMoveR) {
+		U64 move = popFirstPieceMask(pawnsToMoveR);
+		U64 from = PAWNS::getPawnBackwardMoveRight<sideToMove>(move);
 
-	if(pawnToDoEnPessant) {
-		moveList.addCapture(
-				Capture(PAWN, pawnToDoEnPessant, board.enPessantSqr, moveForward<!sideToMove>(board.enPessantSqr, 8) ,PAWN));
-	}
-
-	pawnToDoEnPessant = getPawnAttacksLeft<!sideToMove>(board.enPessantSqr) & pawns;
-	if(pawnToDoEnPessant) {
-		moveList.addCapture(
-				Capture(PAWN, pawnToDoEnPessant, board.enPessantSqr, moveForward<!sideToMove>(board.enPessantSqr, 8), PAWN));
+		if(from & board.getPinnedPieces()) {
+			if(move & board.pinnedPiecesB) {
+				Capture capture(PAWN, from, move);
+				moveList.addCapture(capture);
+			}
+		} else {
+			Capture capture(PAWN, from, move);
+			moveList.addCapture(capture);
+		}
 	}
 }
 
-template <bool sideToMove>
-void generatePawnPromotions(const ChessBoard &board, const U64 pawns, AllMoves &moveList) {
 
-	U64 move;
-	U64 pawnsToMove = moveForward<sideToMove>(pawns, 8) & ~board.allPieces();
+
+template <bool sideToMove, CHECK_T check>
+void generatePawnPromotions(const ChessBoard &board,  const U64 pawns, AllMoves &moveList) {
+
+	U64 pawnsToMove = moveForward<sideToMove>(pawns & ~board.getPinnedPieces(), 8) & ~board.allPieces();
+
+	if(check) {
+		pawnsToMove &= board.checkMap;
+	}
+
 	while(pawnsToMove) {
-		move = popFirstPiece3(pawnsToMove);
+		U64 move = popFirstPieceMask(pawnsToMove);
 		U64 from = moveBackward<sideToMove>(move, 8);
 
-		moveList.addPromotion(Promotion(PAWN, from, move, QUEEN));
-		moveList.addPromotion(Promotion(PAWN, from, move, ROOK));
-		moveList.addPromotion(Promotion(PAWN, from, move, KNIGHT));
-		moveList.addPromotion(Promotion(PAWN, from, move, BISHOP));
+		moveList.addPromotion(Promotion(from, move, QUEEN));
+		moveList.addPromotion(Promotion(from, move, ROOK));
+		moveList.addPromotion(Promotion(from, move, KNIGHT));
+		moveList.addPromotion(Promotion(from, move, BISHOP));
 	}
 
-	pawnsToMove = getPawnAttacksLeft<sideToMove>(pawns) & board.piecesBySide<!sideToMove>();
+	U64 toCapture = board.piecesBySide<!sideToMove>();
 
-	while(pawnsToMove) {
-		move = popFirstPiece3(pawnsToMove);
-		U64 from = getPawnBackwardMoveLeft<sideToMove>(move);
-
-		PIECE_T capturedPiece = board.getPieceOnSquare<!sideToMove>(move);
-
-		moveList.addPromotionCapture(PromotionCapture(PAWN, QUEEN, from, move, capturedPiece));
-		moveList.addPromotionCapture(PromotionCapture(PAWN, ROOK, from, move, capturedPiece));
-		moveList.addPromotionCapture(PromotionCapture(PAWN, KNIGHT, from, move, capturedPiece));
-		moveList.addPromotionCapture(PromotionCapture(PAWN, BISHOP, from, move, capturedPiece));
+	if(check == CHECK) {
+		toCapture &= board.checkMap;
 	}
 
-	pawnsToMove = getPawnAttacksRight<sideToMove>(pawns) & board.piecesBySide<!sideToMove>();
 
-	while(pawnsToMove) {
-		move = popFirstPiece3(pawnsToMove);
-		U64 from = getPawnBackwardMoveRight<sideToMove>(move);
+	U64 pawnAttacksL = PAWNS::getPawnAttacksLeft<sideToMove>(pawns);
+	U64 pawnAttacksR = PAWNS::getPawnAttacksRight<sideToMove>(pawns);
 
-		PIECE_T capturedPiece = board.getPieceOnSquare<!sideToMove>(move);
+	U64 pawnsToMoveL = pawnAttacksL & toCapture;
+	U64 pawnsToMoveR = pawnAttacksR & toCapture;
 
-		moveList.addPromotionCapture(PromotionCapture(PAWN, QUEEN, from, move, capturedPiece));
-		moveList.addPromotionCapture(PromotionCapture(PAWN, ROOK, from, move, capturedPiece));
-		moveList.addPromotionCapture(PromotionCapture(PAWN, KNIGHT, from, move, capturedPiece));
-		moveList.addPromotionCapture(PromotionCapture(PAWN, BISHOP, from, move, capturedPiece));
+
+	while(pawnsToMoveL) {
+		U64 move = popFirstPieceMask(pawnsToMoveL);
+		U64 from = PAWNS::getPawnBackwardMoveLeft<sideToMove>(move);
+
+		if(from & board.getPinnedPieces()) {
+			if(isPinnedCaptureLegal(board.piecesByType<sideToMove>(KING), from, move)) {
+				moveList.addPromotionCapture(PromotionCapture(from, move, QUEEN));
+				moveList.addPromotionCapture(PromotionCapture(from, move, ROOK));
+				moveList.addPromotionCapture(PromotionCapture(from, move, KNIGHT));
+				moveList.addPromotionCapture(PromotionCapture(from, move, BISHOP));
+			}
+		} else {
+			moveList.addPromotionCapture(PromotionCapture(from, move, QUEEN));
+			moveList.addPromotionCapture(PromotionCapture(from, move, ROOK));
+			moveList.addPromotionCapture(PromotionCapture(from, move, KNIGHT));
+			moveList.addPromotionCapture(PromotionCapture(from, move, BISHOP));
+		}
+	}
+
+	while(pawnsToMoveR) {
+		U64 move = popFirstPieceMask(pawnsToMoveR);
+		U64 from = PAWNS::getPawnBackwardMoveRight<sideToMove>(move);
+
+		if(from & board.getPinnedPieces()) {
+			if(isPinnedCaptureLegal(board.piecesByType<sideToMove>(KING), from, move)) {
+				moveList.addPromotionCapture(PromotionCapture(from, move, QUEEN));
+				moveList.addPromotionCapture(PromotionCapture(from, move, ROOK));
+				moveList.addPromotionCapture(PromotionCapture(from, move, KNIGHT));
+				moveList.addPromotionCapture(PromotionCapture(from, move, BISHOP));
+			}
+		} else {
+			PromotionCapture promotionCapture(from, move, QUEEN);
+			moveList.addPromotionCapture(promotionCapture);
+			moveList.addPromotionCapture(PromotionCapture(from, move, ROOK));
+			moveList.addPromotionCapture(PromotionCapture(from, move, KNIGHT));
+			moveList.addPromotionCapture(PromotionCapture(from, move, BISHOP));
+		}
 	}
 }
-
-
 
 
 #endif

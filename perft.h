@@ -1,160 +1,140 @@
 #ifndef PERFT_H
 #define PERFT_H
 
-#include "move.h"
-#include "moveList.h"
-#include "pawns_moves.h"
+#include "move_list.h"
+#include "moves.h"
 #include "moves_generator.h"
-
-template <bool sideToMove>
-signed long long PerftPromotion(const ChessBoard &board, AllMoves &allMoves, int depth);
-
-template <bool sideToMove>
-signed long long Perft(const ChessBoard &board, AllMoves &allMoves, int depth);
+#include "pawns_moves.h"
+#include "zobrist.h"
+#include "cache.h"
 
 
-template <bool sideToMove, class M>
-signed long long iterateOverMoves(const ChessBoard &board, MoveList<M> &moveList, int depth) {
+template <bool sideToMove, bool useCache>
+U64 Perft(const ChessBoard &board, AllMoves &allMoves, U64 kingsMoves, int depth);
 
-	signed long long nodes = 0;
+
+template <bool sideToMove, class M, bool useCache>
+U64 iterateOverMoves(const ChessBoard &board, MoveList<M> &moveList, int depth) {
+
+	U64 nodes = 0;
 
 	M* moves = moveList.getMoves();
     while(moveList.hasNextMove(moves))  {
 
     	M move = *moves++;
+
 		ChessBoard copy = board.makeMove<sideToMove>(move);
+		if(useCache) {
+			U64 value = CACHE::get(copy.getKey() ^ ZOBRIST::getDepthKey(depth));
 
-		if(isSquareAttacked<!sideToMove>(copy.piecesByType<sideToMove>(KING), copy)) {
-			continue;
-		}
-		AllMoves allMoves;
-		generateMoves<!sideToMove>(copy, allMoves);
-		generatePawnsMoves<!sideToMove>(copy, allMoves);
-		nodes += Perft<!sideToMove>(copy, allMoves, depth);
-    }
-    return nodes;
-}
-
-
-template <bool sideToMove>
-signed long long Perft(const ChessBoard &board, AllMoves &allMoves, int depth) {
-
-	depth--;
-
-    signed long long nodes = 0;
-
-    if(depth) {
-
-
-    	nodes += iterateOverMoves<sideToMove, Move>(board, allMoves.moves, depth);
-    	nodes += iterateOverMoves<sideToMove, Capture>(board, allMoves.captures, depth);
-    	nodes += iterateOverMoves<sideToMove, Promotion>(board, allMoves.promotions, depth);
-    	nodes += iterateOverMoves<sideToMove, PromotionCapture>(board, allMoves.promotionCaptures, depth);
-
-    } else {
-
-    	Move* moves = allMoves.moves.getMoves();
-        while(allMoves.moves.hasNextMove(moves))  {
-        	Move move = *moves++;
-			if(isMoveLegal<!sideToMove>(board, move)) {
-				nodes++;
+			if(value) {
+				nodes += value;
+				continue;
 			}
-        }
+		}
 
-        Capture* captures = allMoves.captures.getMoves();
-
-    	while(allMoves.captures.hasNextMove(captures)) {
-    		Capture move = *captures++;
-
-    		if(isMoveLegal<!sideToMove>(board, move)) {
-    			nodes++;
-    		}
-
-//    		ChessBoard copy = board.makeMoveLight<sideToMove>(move);
-//
-//    		if(!isSquareAttacked<!sideToMove>(copy.piecesByType<sideToMove>(KING), copy)) {
-//				nodes++;
-//    		}
-
-
-        }
+		AllMoves allMoves;
+		U64 kingMoves = setCheckAndPinners<sideToMove>(copy);
+		if(copy.isCheck()) {
+			if(copy.isDoubleCheck()) {
+				nodes += Perft<!sideToMove, DOUBLE_CHECK, useCache>(copy, kingMoves, allMoves, depth);
+			} else {
+				nodes += Perft<!sideToMove, CHECK, useCache>(copy, kingMoves, allMoves, depth);
+			}
+		} else {
+			nodes += Perft<!sideToMove, NO_CHECK, useCache>(copy, kingMoves, allMoves, depth);
+		}
     }
-
     return nodes;
 }
 
-//template <bool sideToMove>
-//signed long long PerftPromotion(const ChessBoard &board, MovesList &move_list, int depth) {
+//2252209110354 10 -1
 //
-//	depth--;
-//
-//    signed long long nodes = 0;
-//
-//    Move* moves = move_list.getPromotions();
-//
-//    while(move_list.hasNextPromotion(moves))  {
-//    	Move move = *moves++;
-//        ChessBoard copy = board.makePromotion(move);
-//
-//        if(isSquareAttacked<!sideToMove>(copy.opositeKing(), copy)) {
-//        	continue;
-//        }
-//
-//        if(depth) {
-//        	MovesList new_move_list;
-//            generateMovesPromotion<!sideToMove>(copy, new_move_list);
-//            generatePawnsMoves<!sideToMove>(copy, new_move_list);
-//        	nodes += PerftPromotion<!sideToMove>(copy, new_move_list, depth);
-//        } else {
-//        	nodes++;
-//        }
-////        printChessBoard(copy);
-//    }
-//
-//    moves = move_list.getMoves();
-//
-//
-//    while(move_list.hasNextMove(moves))  {
-//    	Move move = *moves++;
-//        ChessBoard copy = board.makeMove(move);
-//
-//        if(isSquareAttacked<!sideToMove>(copy.opositeKing(), copy)) {
-//        	continue;
-//        }
-//
-//        if(depth) {
-//        	MovesList new_move_list;
-//            generateMovesPromotion<!sideToMove>(copy, new_move_list);
-//            generatePawnsMoves<!sideToMove>(copy, new_move_list);
-//        	nodes += PerftPromotion<!sideToMove>(copy, new_move_list, depth);
-//        } else {
-//        	nodes++;
-//        }
-////        printChessBoard(copy);
-//    }
-//
-//    Capture* captures = move_list.getCaptures();
-//
-//	while(move_list.hasNextCapture(captures)) {
-//		Capture move = *captures++;
-//        ChessBoard copy = board.makeCapture(move);
-//
-//        if(isSquareAttacked<!sideToMove>(copy.opositeKing(), copy)) {
-//        	continue;
-//        }
-//
-//        if(depth) {
-//        	MovesList new_move_list;
-//			generateMovesPromotion<!sideToMove>(copy, new_move_list);
-//			generatePawnsMoves<!sideToMove>(copy, new_move_list);
-//			nodes += PerftPromotion<!sideToMove>(copy, new_move_list, depth);
-//		} else {
-//			nodes++;
-//		}
-//      //  printChessBoard(copy);
-//    }
-//    return nodes;
-//}
+
+template <bool sideToMove, CHECK_T check, bool useCache>
+U64 Perft(ChessBoard &board, U64 kingsMoves, AllMoves &allMoves, int depth) {
+
+	if(check != DOUBLE_CHECK) {
+		generateMoves<sideToMove, check>(board, allMoves);
+		generatePawnsMoves<sideToMove, check>(board, allMoves);
+	}
+	generateMovesAndCapturesForKing<sideToMove>(kingsMoves, board, allMoves);
+
+	if(check == NO_CHECK) {
+		if(isQueenSideCastlePossible<sideToMove>(board)) {
+			allMoves.addQueenSideCastle();
+		}
+
+		if(isKingSideCastlePossible<sideToMove>(board)) {
+			allMoves.addKingSideCastle();
+		}
+	}
+
+    if(depth > 1) {
+
+    	depth--;
+    	U64 nodes = 0;
+
+    	nodes += iterateOverMoves<sideToMove, Capture, useCache>(board, allMoves.captures, depth);
+    	nodes += iterateOverMoves<sideToMove, Move, useCache>(board, allMoves.moves, depth);
+    	nodes += iterateOverMoves<sideToMove, Promotion, useCache>(board, allMoves.promotions, depth);
+    	nodes += iterateOverMoves<sideToMove, PromotionCapture, useCache>(board, allMoves.promotionCaptures, depth);
+
+
+    	if(!check) {
+			if(allMoves.longCastle) {
+				ChessBoard copy = board.makeLongCastle<sideToMove>();
+
+				U64 value = CACHE::get(copy.getKey() ^ ZOBRIST::getDepthKey(depth+1));
+
+				if(useCache && value) {
+					nodes += value;
+				} else {
+					U64 kingMoves = setCheckAndPinners<sideToMove>(copy);
+
+					AllMoves allMoves;
+					if(copy.isCheck()) {
+						nodes += Perft<!sideToMove, CHECK, useCache>(copy, kingMoves, allMoves, depth);
+					} else {
+						nodes += Perft<!sideToMove, NO_CHECK, useCache>(copy, kingMoves, allMoves, depth);
+					}
+				}
+			}
+
+			if(allMoves.shortCastle) {
+				ChessBoard copy = board.makeShortCastle<sideToMove>();
+
+				U64 value = CACHE::get(copy.getKey() ^ ZOBRIST::getDepthKey(depth+1));
+
+				if(useCache && value) {
+					nodes += value;
+				} else {
+					U64 kingMoves = setCheckAndPinners<sideToMove>(copy);
+					AllMoves allMoves;
+
+					if(copy.isCheck()) {
+						nodes += Perft<!sideToMove, CHECK, useCache>(copy, kingMoves, allMoves, depth);
+					} else {
+						nodes += Perft<!sideToMove, NO_CHECK, useCache>(copy, kingMoves, allMoves, depth);
+					}
+				}
+			}
+    	}
+
+    	if(useCache) {
+    		CACHE::put(board.getKey() ^ ZOBRIST::getDepthKey(depth+1), nodes);
+    	}
+    	return nodes;
+    } else {
+    	U64 nodes = allMoves.allMovesCount();
+//    	cout<<nodes<<endl;
+    	if(useCache) {
+    		CACHE::put(board.getKey() ^ ZOBRIST::getDepthKey(1), nodes);
+    	}
+    	return nodes;
+    }
+
+}
 
 
 #endif
