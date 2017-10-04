@@ -7,11 +7,7 @@
 
 using namespace std;
 
-//test
-
 int main3(int argc, char** argv) {
-	
-	cout<<FEN_PARSER::fieldCodeToField("a1");
 	
 	string line;
 	while(true) {

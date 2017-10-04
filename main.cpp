@@ -24,7 +24,7 @@ void run() {
 //	bool sideToMove = parseFen(board, "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - -");
 
 
-	//bool sideToMove = parseFen(board, "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ -");
+//	bool sideToMove = parseFen(board, "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ -");
 
 
 //	bool sideToMove = FEN_PARSER::parseFen(board, "8/PPP4k/8/8/8/8/4Kppp/8 w - - 0 1");
@@ -34,15 +34,11 @@ void run() {
 
 //	bool sideToMove = FEN_PARSER::parseFen(board, "r3k2r/p1p1qpb1/1n1ppnp1/3PN3/1p2P3/2N2Q1p/PPPB1PPP/K2b3R w kq -");
 
-
-// 7 374190009323
-// 7 374190005483 x
-
 //	bool sideToMove = parseFen(board, "4k3/8/8/2b5/8/8/3P4/4K3 w -");
 //	bool sideToMove = parseFen(board, "4kb2/8/8/8/8/8/3P4/4K3 b -");
 //	bool sideToMove = parseFen(board, "rnbqk3/pppppppp/7P/8/8/8/PPPPPPP1/RNBQKBNR w");
 
-	bool sideToMove = FEN_PARSER::parseFen(board, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -");
+//	bool sideToMove = FEN_PARSER::parseFen(board, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -");
 
 
 //	bool sideToMove = parseFen(board, "rnbq1bnr/pppp1kpp/4p3/5P2/8/5Q2/PPPP1PPP/RNB1KBNR w KQkq -");
@@ -51,49 +47,28 @@ void run() {
 
 //	bool sideToMove = parseFen(board, "rnbqkbnr/pppp1ppp/8/4p3/3P4/8/PPP1PPPP/RNBQKBNR w KQkq -");
 //	bool sideToMove = parseFen(board, "8/2p5/3p4/KP6/5p1k/8/4P1P1/8 w - -");
-//	bool sideToMove = FEN_PARSER::parseFen(board, "8/7p/p5pb/4k3/P1pPn3/8/P5PP/1rB2RK1 b - d3 0 28");
+	bool sideToMove = FEN_PARSER::parseFen(board, "8/7p/p5pb/4k3/P1pPn3/8/P5PP/1rB2RK1 b - d3 0 28");
 
-
-
-	//8OK, 9 Zle
 
 //	bool sideToMove = parseFen(board, "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -");//9 OK :)
-	//  szach
 //	bool sideToMove = parseFen(board, "8/2p5/3p4/KP5r/1R3p1k/6P1/4P3/8 b - -");
 //	bool sideToMove = parseFen(board, "8/3K4/2p5/p2b2r1/5k2/8/8/1q6 b - -");//8 OK, OK !
 	//parseFen(board, "r1bqkbnr/1ppp1ppp/p1n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq e6");
 
 //	bool sideToMove = FEN_PARSER::parseFen(board, "2Q5/PP5k/8/8/8/8/4Kppp/8 b - -");//8 OK! OK:)
-//	9 389736558441 v
-//	9 389736558661 x
-
 
 //	bool sideToMove = FEN_PARSER::parseFen(board, "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10");
 
 
 	//parseFen(board, "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10");
 
-//	cout<<"Move: "<<board.sideToMove<<endl;b
-//	cout<<"init EN "<<board.enPessantSqr<<endl;
-
 	printChessBoard(board);
-
-	//cout<< getFirstPiece(board->king[WHITE])<<endl;
-	//4 - 197,281
-	//5  4,865,609 - OK
-	//6  119060324 - OK
-	//7 3195901860 - OK
-	//8 84998978956 - OK
-	//9 2439530234167 - OK
-	//10 69352859712417 - OK
 
     AllMoves allMoves;
 
     board.generateKey(sideToMove);
 
     int level = 7;
-//13166245948270
-//13166245942927
 
     const bool useCache = false;
 
@@ -119,8 +94,6 @@ void run() {
 
     cout<<"Moves: "<<result<<endl;
 }
-
-//2238101974693
 
 int main() {
 
