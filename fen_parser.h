@@ -2,12 +2,15 @@
 #define FEN_PARSER_H
 
 #include "chessboard.h"
+#include <string>
 
 namespace FEN_PARSER {
 
-	bool parseFen(ChessBoard &board, char* fenString);
+	bool parseFen(ChessBoard &board, string fenString);
 
-	int fieldCodeToField(char* moveCode);
+	SQUARE_T parseSquare(string squareCode);
+
+	U64 parseSquareMap(string squareCode);
 
 }
 #endif

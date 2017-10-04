@@ -2,48 +2,49 @@
 
 #include <iostream>
 #include <ctype.h>
-#include <string.h>
-#include "chessboard.h"
 #include <vector>
+#include "chessboard.h"
 
 using namespace std;
 
-int FEN_PARSER::fieldCodeToField(char* moveCode) {
-	char x = tolower(moveCode[0]) - 97;
-	char y = moveCode[1] - 49;
-	
+SQUARE_T FEN_PARSER::parseSquare(string squareCode) {
+	char x = tolower(squareCode[0]) - 97;
+	char y = squareCode[1] - 49;
+
 	return y*8 + x;
 }
 
-vector<string> split(const char *str, char c = ' ')
-{
+U64 FEN_PARSER::parseSquareMap(string squareCode) {
+	return 1ll<<parseSquare(squareCode);
+}
+
+vector<string> split(string toSplit, char c){
     vector<string> result;
-
-    do
-    {
+	const char *str = toSplit.c_str();
+    do {
         const char *begin = str;
-
-        while(*str != c && *str)
+        while(*str != c && *str) {
             str++;
-
+        }
         result.push_back(string(begin, str));
-    } while (0 != *str++);
-
+    }
+    while(*str++ != 0);
     return result;
 }
 
-bool FEN_PARSER::parseFen(ChessBoard& board, char* fenString) {
+bool FEN_PARSER::parseFen(ChessBoard& board, string fenRawString) {
 	
 	bool sideToMove;
 
-	char c = 'x';
-	
 	int boardIndexY = 7;
 	int boardIndexX = 1;
-	int stringIndex = 0;
 	
-	for(stringIndex = 0; c !=' '; stringIndex++) {
-		c = fenString[stringIndex];
+	vector<string> fen = split(fenRawString, ' ');
+
+	string positionString = fen[0];
+
+	for(auto it=positionString.begin(); it!=positionString.end(); ++it) {
+		char c = *it;
 		
 		if(isdigit(c)) {
 			int offset = c - 48;
@@ -71,70 +72,41 @@ bool FEN_PARSER::parseFen(ChessBoard& board, char* fenString) {
 		}			
 	}
 
-	c = fenString[stringIndex];
+	string sideString = fen[1];
 	
-	if(c=='b') {
+	if(sideString == "b") {
 		sideToMove = 1;
-		cout<<"BLACK"<<endl;
 	} else {
 		sideToMove = 0;
-		cout<<"WHITE"<<endl;
 	}
 	
-	c = fenString[++++stringIndex];
+	string castle = fen[2];
 
 	CASTLE_T castleW = 0, castleB = 0;
-	
-	if(c == '-') {
-	} else {
-		while(c!=' ') {
-			if(c=='K') {
-				castleW += KING_SIDE;
-				cout<<"King side W"<<endl;
-			}
-			if(c=='k') {
-				castleB += KING_SIDE;
-				cout<<"King side B"<<endl;
-			}
-			if(c=='Q') {
-				castleW += QUEEN_SIDE;
-				cout<<"Queen side W"<<endl;
-			}
-			if(c=='q') {
-				castleB += QUEEN_SIDE;
-				cout<<"Queen side B"<<endl;
-			}
-			c = fenString[++stringIndex];
-		}
-		board.setCastle(castleW, WHITE);
-		board.setCastle(castleB, BLACK);
+
+	if(castle.find('K') != string::npos) {
+		castleW += KING_SIDE;
+	}
+	if(castle.find('k') != string::npos) {
+		castleB += KING_SIDE;
+	}
+	if(castle.find('Q') != string::npos) {
+		castleW += QUEEN_SIDE;
+	}
+	if(castle.find('k') != string::npos) {
+		castleB += QUEEN_SIDE;
 	}
 		
-	char enpessant[2];	
-	stringIndex++;
+	board.setCastle(castleW, WHITE);
+	board.setCastle(castleB, BLACK);
+
+	string enpessant = fen[3];
 	
-	c = fenString[++stringIndex];
-	if(c != '-' && c!='\0') {
-		cout<<c;
-		enpessant[0] = c;
-		c = fenString[++stringIndex];
-		cout<<c<<endl;
-		enpessant[1] = c;
-		
-		cout<<enpessant<<endl;
-		
-		int enpessantSqr = fieldCodeToField(enpessant);
-		cout<<"EN - "<<enpessantSqr<<endl;
-		board.enPessantSqr = 1LL<<(enpessantSqr);
-		
-//		if(board.sideToMove) {
-////			board.enPessantPawn = board.enPessantSqr<<8;b
-//		} else {
-//			board.enPessantPawn = board.enPessantSqr>>8;
-//		}
-		
+	if(enpessant != "-") {
+		board.enPessantSqr = parseSquareMap(enpessant);
+	} else {
+		board.enPessantSqr = 0;
 	}
 	
 	return sideToMove;
-	
 }
