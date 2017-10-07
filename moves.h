@@ -4,27 +4,6 @@
 #include "bitboard.h"
 #include "zobrist.h"
 
-union MoveKey {
-
-	unsigned int key = 0;
-
-	bool moveOrCapture;
-	bool isPromotion;
-
-	bool isCastle;
-	bool KingOrQueenSide;
-
-	bool isEnPassant;
-	bool isPawnTwoSqure;
-
-	bool empty1;
-	bool empty2;
-
-	char to;
-	char from;
-	char otherInfo;
-};
-
 class Move {
 public:
 
@@ -43,20 +22,6 @@ public:
 		this->maskTo = to;
 		this->enPessant = 0;
 	}
-
-	inline Move(MoveKey key) {
-
-		this->maskFrom = 2<<key.from;
-		this->maskTo = 2<<key.to;
-
-		if(key.isPawnTwoSqure) {
-			this->piece = PAWN;
-			this->enPessant = key.otherInfo;
-		} else {
-			this->piece = key.otherInfo;
-		}
-	}
-
 
 	template <bool siedToMove>
 	inline U64 createKey() {
@@ -83,41 +48,6 @@ public:
 		this->maskFrom = from;
 		this->maskTo = to;
 		this->capturedPieceSquare = to;
-	}
-
-	inline Capture(MoveKey key) {
-
-		this->maskFrom = 2<<key.from;
-		this->maskTo = 2<<key.to;
-
-		if(key.isEnPassant) {
-			this->piece = PAWN;
-			this->capturedPieceSquare = key.otherInfo;
-		} else {
-			this->piece = key.otherInfo;
-			this->capturedPieceSquare = maskTo;
-		}
-	}
-
-
-	inline unsigned int createKey() {
-		MoveKey moveKey;
-
-		moveKey.moveOrCapture = 1;
-		moveKey.isPromotion = 0;
-		moveKey.isCastle = 0;
-
-		moveKey.from = popFirstPieceMask(maskFrom);
-		moveKey.to = popFirstPieceMask(maskTo);
-
-		if(maskTo == capturedPieceSquare) {
-			moveKey.otherInfo = piece;
-		} else {
-			moveKey.isEnPassant = 1;
-			moveKey.otherInfo = popFirstPieceMask(capturedPieceSquare);
-		}
-
-		return moveKey.key;
 	}
 };
 
@@ -159,31 +89,8 @@ public:
 		this->promotion = promotion;
 	}
 
-	inline Promotion(MoveKey key) {
-		this->piece = PAWN;
-		this->maskFrom = 2<<key.from;
-		this->maskTo = 2<<key.to;
-
-		this->promotion = key.otherInfo;
-	}
-
 	Promotion() {
 
-	}
-
-	inline unsigned int createKey() {
-		MoveKey moveKey;
-
-		moveKey.moveOrCapture = 0;
-		moveKey.isPromotion = 1;
-		moveKey.isCastle = 0;
-
-		moveKey.from = popFirstPieceMask(maskFrom);
-		moveKey.to = popFirstPieceMask(maskTo);
-
-		moveKey.otherInfo = promotion;
-
-		return moveKey.key;
 	}
 };
 
@@ -204,32 +111,8 @@ public:
 		this->promotion = promotion;
 	}
 
-	inline PromotionCapture(MoveKey key) {
-		this->piece = PAWN;
-		this->maskFrom = 2<<key.from;
-		this->maskTo = 2<<key.to;
-		this->capturedPieceSquare = maskTo;
-
-		this->promotion = key.otherInfo;
-	}
-
 	PromotionCapture() {
 
-	}
-
-	inline unsigned int createKey() {
-		MoveKey moveKey;
-
-		moveKey.moveOrCapture = 1;
-		moveKey.isPromotion = 1;
-		moveKey.isCastle = 0;
-
-		moveKey.from = popFirstPieceMask(maskFrom);
-		moveKey.to = popFirstPieceMask(maskTo);
-
-		moveKey.otherInfo = promotion;
-
-		return moveKey.key;
 	}
 };
 
