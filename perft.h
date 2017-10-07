@@ -14,7 +14,7 @@ U64 Perft(const ChessBoard &board, AllMoves &allMoves, U64 kingsMoves, int depth
 
 
 template <bool sideToMove, class M, bool useCache>
-U64 iterateOverMoves(const ChessBoard &board, MoveList<M> &moveList, int depth) {
+inline U64 iterateOverMoves(const ChessBoard &board, MoveList<M> &moveList, int depth) {
 
 	U64 nodes = 0;
 
@@ -47,9 +47,6 @@ U64 iterateOverMoves(const ChessBoard &board, MoveList<M> &moveList, int depth) 
     }
     return nodes;
 }
-
-//2252209110354 10 -1
-//
 
 template <bool sideToMove, CHECK_T check, bool useCache>
 U64 Perft(ChessBoard &board, U64 kingsMoves, AllMoves &allMoves, int depth) {
@@ -127,7 +124,6 @@ U64 Perft(ChessBoard &board, U64 kingsMoves, AllMoves &allMoves, int depth) {
     	return nodes;
     } else {
     	U64 nodes = allMoves.allMovesCount();
-//    	cout<<nodes<<endl;
     	if(useCache) {
     		CACHE::put(board.getKey() ^ ZOBRIST::getDepthKey(1), nodes);
     	}
