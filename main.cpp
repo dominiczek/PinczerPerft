@@ -102,6 +102,7 @@ int main() {
 	cout<<"Time taken: "<< ( ( (double) (clock() - tStart)) / CLOCKS_PER_SEC) <<" s.";
 
 	CACHE::CleanUp();
+	ZOBRIST::CleanUp();
 
 	return 0;
 }

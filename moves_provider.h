@@ -66,6 +66,8 @@ private:
 		return ((occupancy * magic) >> shift) + offset;
 	}
 
+	bool isReady = false;
+
 	U64 rookMasks[SQUARES_COUNT];
 	U64 rookMagics[SQUARES_COUNT];
 	int rookShifts[SQUARES_COUNT];
@@ -97,6 +99,11 @@ vector<T> readVectorFromFile(const std::string& filename) {
 }
 
 void MovesProvider::Initialize() {
+
+	if(isReady) {
+		return;
+	}
+
 	vector<U64> rook_masks = readVectorFromFile<U64>(rookMasksFileName);
 	vector<U64> bishop_masks = readVectorFromFile<U64>(bishopMasksFileName);
 	vector<U64> rook_magics = readVectorFromFile<U64>(rookMagicFileName);
@@ -121,6 +128,8 @@ void MovesProvider::Initialize() {
 	}
 
 	std::cout << "Magic - Initialized." << std::endl;
+
+	this->isReady = true;
 }
 
 MovesProvider sliderAttacks;
