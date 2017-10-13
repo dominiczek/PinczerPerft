@@ -5,20 +5,26 @@
 #include <random>
 
 namespace {
- U64 zobrist_keys[64][6][2];
- U64 en_pessant_key[64];
- U64 castle_keys[2][4];
- U64 black_move_key;
+	U64 zobrist_keys[64][6][2];
+	U64 en_pessant_key[64];
+	U64 castle_keys[2][4];
+	U64 black_move_key;
 
 
- U64 depths[10];
+	U64 depths[10];
 
- const U64 maxU64 = 0xFFFFFFFFFFFFFFFF;
+	const U64 maxU64 = 0xFFFFFFFFFFFFFFFF;
+
+	bool isReady = false;
 }
 
 namespace ZOBRIST {
 
 	inline void Initialize() {
+
+		if(isReady) {
+			return;
+		}
 
 	    std::random_device rd;
 	    std::mt19937 gen(rd());
@@ -48,6 +54,11 @@ namespace ZOBRIST {
 			depths[i] = randomU64(gen);
 		}
 
+		isReady = true;
+	}
+
+	inline void CleanUp() {
+		isReady = false;
 	}
 
 	inline void generateForPieces(U64 pieces, PIECE_T piece, bool side, U64 &result) {

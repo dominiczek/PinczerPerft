@@ -10,9 +10,13 @@ namespace{
 		std::unique_ptr<U64[]> keys;
 		std::unique_ptr<type[]> values;
 		unsigned int size;
+		bool isReady = false;
 
 	public:
 		inline void Initialize(unsigned int s) {
+			if(isReady) {
+				return;
+			}
 			size = s;
 			keys = std::make_unique<U64[]>(s);
 			values = std::make_unique<type[]>(s);
@@ -21,6 +25,7 @@ namespace{
 				keys[i] = 0;
 				values[i] = 0;
 			}
+			isReady = true;
 		}
 
 		inline void put(U64 key, type value) {
@@ -42,6 +47,7 @@ namespace{
 		inline void CleanUp() {
 			keys.release();
 			values.release();
+			isReady = false;
 		}
 	};
 
