@@ -2,7 +2,6 @@
 #define FEN_PARSER_H
 
 #include "chessboard.h"
-#include <string>
 
 namespace FEN_PARSER {
 
@@ -11,6 +10,14 @@ namespace FEN_PARSER {
 	SQUARE_T parseSquare(string squareCode);
 
 	U64 parseSquareMap(string squareCode);
+
+
+	template <bool sideToMove>
+	ChessBoard makeMove(const ChessBoard &board, string move);
+
+	ChessBoard makeMove(bool &siedToMove, ChessBoard &board, string move);
+
+	ChessBoard makeMovesList(bool &siedToMove, ChessBoard &board, string moves);
 
 }
 #endif
