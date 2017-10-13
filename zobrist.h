@@ -5,7 +5,7 @@
 #include <random>
 
 namespace {
-	U64 zobrist_keys[64][6][2];
+	U64 zobrist_keys[2][64][6];
 	U64 en_pessant_key[64];
 	U64 castle_keys[2][4];
 	U64 black_move_key;
@@ -34,8 +34,8 @@ namespace ZOBRIST {
 
 		for(int i= 0; i< 64; i++) {
 			for(int j= 0; j< 6; j++) {
-				zobrist_keys[i][j][WHITE] = randomU64(gen);
-				zobrist_keys[i][j][BLACK] = randomU64(gen);
+				zobrist_keys[WHITE][i][j] = randomU64(gen);
+				zobrist_keys[BLACK][i][j] = randomU64(gen);
 			}
 			en_pessant_key[i] = randomU64(gen);
 		}
@@ -72,7 +72,7 @@ namespace ZOBRIST {
 
 	template<bool side>
 	inline U64 getZobristPieceKey(const U64 mask, const PIECE_T piece) {
-		return zobrist_keys[getFirstPieceSquare(mask)][piece][side];
+		return zobrist_keys[side][getFirstPieceSquare(mask)][piece];
 	}
 
 	template<bool side>
