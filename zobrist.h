@@ -66,7 +66,7 @@ namespace ZOBRIST {
 			SQUARE_T sqr = getFirstPieceSquare(pieces);
 			popFirstPieceMask(pieces);
 
-			result ^= zobrist_keys[sqr][piece][side];
+			result ^= zobrist_keys[side][sqr][piece];
 		}
 	}
 
