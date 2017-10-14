@@ -15,9 +15,6 @@ namespace {
 namespace PAWNS {
 
 	template <bool sideToMove>
-	inline U64 getPawnAttacks(const U64 pawns);
-
-	template <bool sideToMove>
 	inline U64 getPawnAttacksLeft(const U64 pawns);
 
 	template <bool sideToMove>
@@ -59,22 +56,6 @@ namespace PAWNS {
 	}
 
 	template <>
-	inline U64 getPawnAttacks<WHITE>(const U64 pawns) {
-
-		U64 captures =  (pawns & RANKS_A_TO_G) << 7;
-		captures |= (pawns & RANKS_B_TO_H) <<9;
-		return captures;
-	}
-
-	template <>
-	inline U64 getPawnAttacks<BLACK>(const U64 pawns) {
-
-		U64 captures =  (pawns & RANKS_A_TO_G) >> 9;
-		captures |= (pawns & RANKS_B_TO_H) >>7;
-		return captures;
-	}
-
-	template <>
 	inline U64 getPawnAttacksLeft<WHITE>(const U64 pawns) {
 		return (pawns & RANKS_B_TO_H) <<9;
 	}
@@ -103,6 +84,12 @@ namespace PAWNS {
 	inline U64 getPawnAttacksRight<BLACK>(const U64 pawns) {
 		return (pawns & RANKS_A_TO_G) >> 9;
 	}
+
+	template <bool sideToMove>
+	inline U64 getPawnAttacks(const U64 pawns) {
+		return getPawnAttacksLeft<sideToMove>(pawns) | getPawnAttacksRight<sideToMove>(pawns);
+	}
+
 
 	template <>
 	inline U64 getPawnBackwardMoveRight<WHITE>(const U64 pawn) {
