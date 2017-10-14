@@ -16,20 +16,18 @@ public:
 
 	}
 
+	inline Move(const Move& move) {
+		this->piece = move.piece;
+		this->maskFrom = move.maskFrom;
+		this->maskTo = move.maskTo;
+		this->enPessant = move.enPessant;
+	}
+
 	inline Move(const PIECE_T piece, const U64 from, const U64 to) {
 		this->piece = piece;
 		this->maskFrom = from;
 		this->maskTo = to;
 		this->enPessant = 0;
-	}
-
-	template <bool siedToMove>
-	inline U64 createKey() {
-
-		U64 key = 0;
-
-		key ^= ZOBRIST::getZobristPieceKey<siedToMove>(this->maskTo, this->piece);
-		key ^= this->maskFrom;
 	}
 };
 
@@ -38,16 +36,26 @@ class Capture : public Move {
 public:
 
 	U64 capturedPieceSquare;
+	PIECE_T capturedPiece;
+
+	inline Capture(const Capture& move) {
+		this->piece = move.piece;
+		this->maskFrom = move.maskFrom;
+		this->maskTo = move.maskTo;
+		this->capturedPieceSquare = move.capturedPieceSquare;
+		this->capturedPiece = move.capturedPiece;
+	}
 
 	inline Capture() {
 
 	}
 
-	inline Capture(const PIECE_T piece,  const U64 from, const U64 to) {
+	inline Capture(const PIECE_T piece,  const U64 from, const U64 to, PIECE_T capturedPiece) {
 		this->piece = piece;
 		this->maskFrom = from;
 		this->maskTo = to;
 		this->capturedPieceSquare = to;
+		this->capturedPiece = capturedPiece;
 	}
 };
 
@@ -71,6 +79,7 @@ public:
 		this->maskFrom = from;
 		this->maskTo = to;
 		this->capturedPieceSquare = capturedPieceSquare;
+		this->capturedPiece = PAWN;
 	}
 };
 
@@ -89,6 +98,13 @@ public:
 		this->promotion = promotion;
 	}
 
+	inline Promotion(const Promotion& move) {
+		this->piece = move.piece;
+		this->maskFrom = move.maskFrom;
+		this->maskTo = move.maskTo;
+		this->promotion = move.promotion;
+	}
+
 	Promotion() {
 
 	}
@@ -102,11 +118,21 @@ public:
 
 	PIECE_T promotion;
 
-	inline PromotionCapture(const U64 from, const U64 to, const PIECE_T promotion) {
+	inline PromotionCapture(const PromotionCapture& move) {
+		this->piece = move.piece;
+		this->maskFrom = move.maskFrom;
+		this->maskTo = move.maskTo;
+		this->capturedPieceSquare = move.capturedPieceSquare;
+		this->capturedPiece = move.capturedPiece;
+		this->promotion = move.promotion;
+	}
+
+	inline PromotionCapture(const U64 from, const U64 to, const PIECE_T promotion, const PIECE_T captured) {
 		this->piece = PAWN;
 		this->maskFrom = from;
 		this->maskTo = to;
 		this->capturedPieceSquare = to;
+		this->capturedPiece = captured;
 
 		this->promotion = promotion;
 	}

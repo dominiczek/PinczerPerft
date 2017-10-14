@@ -5,7 +5,8 @@
 #include "chessboard_utils.h"
 #include "moves_provider.h"
 
-U64 getDirection(const int from, const U64 king) {
+
+inline U64 getDirection(const int from, const U64 king) {
 
 	const U64 (*moves) = queenMoves[from];
 
@@ -23,37 +24,6 @@ U64 getDirection(const int from, const U64 king) {
 	}
 
 	return 0;
-}
-
-U64 getDirection2(const int from, const U64 king) {
-
-	const U64 (*moves) = queenMoves[from];
-
-	if((moves[NE] | moves[SW]) & king) {
-		return moves[NE] | moves[SW];
-	}
-	if((moves[SE] | moves[NW]) & king) {
-		return moves[SE] | moves[NW];
-	}
-
-	return 0;
-}
-
-template <bool sideToMove>
-inline bool isPinnedMoveLegal(const ChessBoard& board, const U64 allPieces,
-		const U64 queenAndRook, const U64 queenAndBishop) {
-
-	SQUARE_T sqr = getFirstPieceSquare(board.piecesByType<sideToMove>(KING));
-
-	if(MOVE_PROVIDER::getMoves<BISHOP>(allPieces, sqr) & queenAndBishop) {
-		return false;
-	}
-
-	if(MOVE_PROVIDER::getMoves<ROOK>(allPieces, sqr) & queenAndRook) {
-		return false;
-	}
-
-	return true;
 }
 
 template <bool sideToMove>
@@ -84,12 +54,6 @@ inline bool isKingMoveLegal(const ChessBoard& board, const U64 allPieces, const 
 	return true;
 }
 
-inline bool isPinnedCaptureLegal(const U64 king, const U64 maskFrom, const U64 maskTo) {
-
-	U64 legal = getDirection2(getFirstPieceSquare(maskFrom), king);
-
-	return legal & maskTo;
-}
 
 template <bool sideToMove>
 inline bool isEnPassantMoveLegal(const ChessBoard& board, const Capture& move) {
@@ -99,10 +63,19 @@ inline bool isEnPassantMoveLegal(const ChessBoard& board, const Capture& move) {
 	allPieces -= move.capturedPieceSquare;
 	allPieces += move.maskTo;
 
-	U64 queenAndRook = board.piecesByType<!sideToMove>(ROOK) | board.piecesByType<!sideToMove>(QUEEN);
-	U64 queenAndBishop = board.piecesByType<!sideToMove>(BISHOP) | board.piecesByType<!sideToMove>(QUEEN);
+	SQUARE_T sqr = getFirstPieceSquare(board.piecesByType<sideToMove>(KING));
 
-	return isPinnedMoveLegal<sideToMove>(board, allPieces, queenAndRook, queenAndBishop);
+	U64 queenAndBishop = board.piecesByType<!sideToMove>(BISHOP) | board.piecesByType<!sideToMove>(QUEEN);
+	if(MOVE_PROVIDER::getMoves<BISHOP>(allPieces, sqr) & queenAndBishop) {
+		return false;
+	}
+
+	U64 queenAndRook = board.piecesByType<!sideToMove>(ROOK) | board.piecesByType<!sideToMove>(QUEEN);
+	if(MOVE_PROVIDER::getMoves<ROOK>(allPieces, sqr) & queenAndRook) {
+		return false;
+	}
+
+	return true;
 }
 
 template <bool sideToMove>
@@ -126,7 +99,8 @@ inline void getChecksOnPositiveDirection(ChessBoard &board, const U64 movesOnDir
 			board.checkMap |= legalMoves;
 			board.checkMap |= blocker;
 		} else {
-			U64 nextBlocker = getFirstPieceMask(potentialBlockers - blocker);
+			potentialBlockers-=blocker;
+			U64 nextBlocker = getFirstPieceMask(potentialBlockers);
 			if(nextBlocker & attackers) {
 				U64 allowedSquares = nextBlocker - 1;
 				U64 legalMoves = movesOnDir & allowedSquares;
@@ -151,11 +125,11 @@ inline void getChecksOnNegativeDirection(ChessBoard &board, const U64 movesOnDir
 			board.checkMap |= legalMoves;
 		}
 		else {
-			U64 nextBlocker = getLastPieceMask(potentialBlockers - blocker);
+			potentialBlockers-=blocker;
+			U64 nextBlocker = getLastPieceMask(potentialBlockers);
 			if(nextBlocker & attackers) {
 				U64 allowedSquares = ~(nextBlocker - 1);
 				U64 legalMoves = movesOnDir & allowedSquares;
-
 				pinnedPieces |= legalMoves;
 			}
 		}
@@ -165,28 +139,29 @@ inline void getChecksOnNegativeDirection(ChessBoard &board, const U64 movesOnDir
 
 template <bool sideToMove>
 inline U64 setCheckAndPinners(ChessBoard& board) {
+
 	U64 king = board.piecesByType<!sideToMove>(KING);
 	SQUARE_T sqr = getFirstPieceSquare(king);
 
-	U64 allKingMoves = kingMoves[sqr];
 
 	const U64 (*moves) = queenMoves[sqr];
+
 
 	U64 queenAndRook = board.piecesByType<sideToMove>(ROOK) | board.piecesByType<sideToMove>(QUEEN);
 	U64 queenAndBishop = board.piecesByType<sideToMove>(BISHOP) | board.piecesByType<sideToMove>(QUEEN);
 
-	getChecksOnPositiveDirection(board, moves[NW], queenAndBishop, board.pinnedPiecesB);
-	getChecksOnPositiveDirection(board, moves[NE], queenAndBishop, board.pinnedPiecesB);
-	getChecksOnPositiveDirection(board, moves[E], queenAndRook, board.pinnedPiecesR);
+	getChecksOnPositiveDirection(board, moves[NW], queenAndBishop, board.pinnedToBishop);
+	getChecksOnPositiveDirection(board, moves[NE], queenAndBishop, board.pinnedToBishop);
+	getChecksOnPositiveDirection(board, moves[E], queenAndRook, board.pinnedToRook);
 
-	getChecksOnNegativeDirection(board, moves[SE], queenAndBishop, board.pinnedPiecesB);
-	getChecksOnNegativeDirection(board, moves[SW], queenAndBishop, board.pinnedPiecesB);
-	getChecksOnNegativeDirection(board, moves[W], queenAndRook, board.pinnedPiecesR);
+	getChecksOnNegativeDirection(board, moves[SE], queenAndBishop, board.pinnedToBishop);
+	getChecksOnNegativeDirection(board, moves[SW], queenAndBishop, board.pinnedToBishop);
+	getChecksOnNegativeDirection(board, moves[W], queenAndRook, board.pinnedToRook);
 
-	board.pinnedPawns = board.pinnedPiecesB + board.pinnedPiecesR;
+	board.pinnedPawns = board.getPinnedPieces();
 
-	getChecksOnNegativeDirection(board, moves[S], queenAndRook, board.pinnedPiecesR);
-	getChecksOnPositiveDirection(board, moves[N], queenAndRook, board.pinnedPiecesR);
+	getChecksOnNegativeDirection(board, moves[S], queenAndRook, board.pinnedToRook);
+	getChecksOnPositiveDirection(board, moves[N], queenAndRook, board.pinnedToRook);
 
 	if(MOVE_PROVIDER::getMoves<KNIGHT>(0, sqr) & board.piecesByType<sideToMove>(KNIGHT)) {
 		board.checkMap += MOVE_PROVIDER::getMoves<KNIGHT>(0, sqr) & board.piecesByType<sideToMove>(KNIGHT);
@@ -195,7 +170,7 @@ inline U64 setCheckAndPinners(ChessBoard& board) {
 	U64 pawnsToMove = board.piecesByType<sideToMove>(PAWN);
 	U64 pawnAttacks = PAWNS::getPawnAttacks<sideToMove>(pawnsToMove);
 
-	allKingMoves &= ~pawnAttacks;
+	U64 allKingMoves = kingMoves[sqr] & ~pawnAttacks;
 
 	if (pawnAttacks & king) {
 		board.checkMap += PAWNS::getPawnAttacks<!sideToMove>(pawnAttacks & king) & pawnsToMove;

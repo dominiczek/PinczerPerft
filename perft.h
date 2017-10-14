@@ -23,15 +23,22 @@ inline U64 iterateOverMoves(const ChessBoard &board, MoveList<M> &moveList, int 
 
     	M move = *moves++;
 
-		ChessBoard copy = board.makeMove<sideToMove>(move);
+    	U64 moveKey;
+
 		if(useCache) {
-			U64 value = CACHE::get(copy.getKey() ^ ZOBRIST::getDepthKey(depth));
+			moveKey = board.createKey<sideToMove>(move);
+			U64 value = CACHE::get(board.getKey() ^ moveKey ^ ZOBRIST::getDepthKey(depth));
 
 			if(value) {
 				nodes += value;
 				continue;
 			}
 		}
+		ChessBoard copy = board.makeMove<sideToMove>(move);
+		if(useCache) {
+			copy.updateKey(moveKey);
+		}
+
 
 		AllMoves allMoves;
 		U64 kingMoves = setCheckAndPinners<sideToMove>(copy);
@@ -46,6 +53,57 @@ inline U64 iterateOverMoves(const ChessBoard &board, MoveList<M> &moveList, int 
 		}
     }
     return nodes;
+}
+
+template <bool sideToMove, bool useCache>
+inline U64 castleShort(const ChessBoard &board, int depth) {
+
+	U64 moveKey = board.createKeyKingSideCastle<sideToMove>();
+
+	if(useCache) {
+		U64 value = CACHE::get(board.getKey() ^ moveKey ^ ZOBRIST::getDepthKey(depth));
+		if(value) {
+			return value;
+		}
+	}
+	ChessBoard copy = board.makeShortCastle<sideToMove>();
+	if(useCache) {
+		copy.updateKey(moveKey);
+	}
+	U64 kingMoves = setCheckAndPinners<sideToMove>(copy);
+
+	AllMoves allMoves;
+	if(copy.isCheck()) {
+		return Perft<!sideToMove, CHECK, useCache>(copy, kingMoves, allMoves, depth);
+	} else {
+		return Perft<!sideToMove, NO_CHECK, useCache>(copy, kingMoves, allMoves, depth);
+	}
+}
+
+template <bool sideToMove, bool useCache>
+inline U64 castleLong(const ChessBoard &board, int depth) {
+
+	U64 moveKey = board.createKeyQueenSideCastle<sideToMove>();
+
+	if(useCache) {
+		U64 value = CACHE::get(board.getKey() ^ moveKey ^ ZOBRIST::getDepthKey(depth));
+		if(value) {
+			return value;
+		}
+	}
+	ChessBoard copy = board.makeLongCastle<sideToMove>();
+	if(useCache) {
+		copy.updateKey(moveKey);
+	}
+
+	U64 kingMoves = setCheckAndPinners<sideToMove>(copy);
+
+	AllMoves allMoves;
+	if(copy.isCheck()) {
+		return Perft<!sideToMove, CHECK, useCache>(copy, kingMoves, allMoves, depth);
+	} else {
+		return Perft<!sideToMove, NO_CHECK, useCache>(copy, kingMoves, allMoves, depth);
+	}
 }
 
 template <bool sideToMove, CHECK_T check, bool useCache>
@@ -80,41 +138,10 @@ U64 Perft(ChessBoard &board, U64 kingsMoves, AllMoves &allMoves, int depth) {
 
     	if(!check) {
 			if(allMoves.longCastle) {
-				ChessBoard copy = board.makeLongCastle<sideToMove>();
-
-				U64 value = CACHE::get(copy.getKey() ^ ZOBRIST::getDepthKey(depth+1));
-
-				if(useCache && value) {
-					nodes += value;
-				} else {
-					U64 kingMoves = setCheckAndPinners<sideToMove>(copy);
-
-					AllMoves allMoves;
-					if(copy.isCheck()) {
-						nodes += Perft<!sideToMove, CHECK, useCache>(copy, kingMoves, allMoves, depth);
-					} else {
-						nodes += Perft<!sideToMove, NO_CHECK, useCache>(copy, kingMoves, allMoves, depth);
-					}
-				}
+				nodes += castleLong<sideToMove, useCache>(board, depth);
 			}
-
 			if(allMoves.shortCastle) {
-				ChessBoard copy = board.makeShortCastle<sideToMove>();
-
-				U64 value = CACHE::get(copy.getKey() ^ ZOBRIST::getDepthKey(depth+1));
-
-				if(useCache && value) {
-					nodes += value;
-				} else {
-					U64 kingMoves = setCheckAndPinners<sideToMove>(copy);
-					AllMoves allMoves;
-
-					if(copy.isCheck()) {
-						nodes += Perft<!sideToMove, CHECK, useCache>(copy, kingMoves, allMoves, depth);
-					} else {
-						nodes += Perft<!sideToMove, NO_CHECK, useCache>(copy, kingMoves, allMoves, depth);
-					}
-				}
+				nodes += castleShort<sideToMove, useCache>(board, depth);
 			}
     	}
 

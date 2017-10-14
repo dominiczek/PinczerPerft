@@ -4,7 +4,7 @@
 #include "legality.h"
 
 template <bool sideToMove>
-bool isKingSideCastlePossible(const ChessBoard &board) {
+inline bool isKingSideCastlePossible(const ChessBoard &board) {
 	if(board.allPieces() & shortCastleBlockers[sideToMove]) {
 		return false;
 	}
@@ -30,7 +30,7 @@ bool isKingSideCastlePossible(const ChessBoard &board) {
 }
 
 template <bool sideToMove>
-bool isQueenSideCastlePossible(const ChessBoard &board) {
+inline bool isQueenSideCastlePossible(const ChessBoard &board) {
 	if(board.allPieces() & longCastleBlockers[sideToMove]) {
 		return false;
 	}
@@ -66,7 +66,9 @@ inline void generateMovesAndCapturesForKing(const U64 attacks, const ChessBoard 
 	while (captures) {
 		U64 to = popFirstPieceMask(captures);
 
-		Capture capture(KING, kingToMove, to);
+
+		PIECE_T captured = board.getPieceOnSquare<!sideToMove>(to);
+		Capture capture(KING, kingToMove, to, captured);
 
 		if(isKingMoveLegal<sideToMove>(board, capture)) {
 			moveList.addCapture(capture);
@@ -108,7 +110,9 @@ inline void generateCaptures(const ChessBoard &board, const U64 sqrMask,
 
 	while (captures) {
 		U64 to = popFirstPieceMask(captures);
-		Capture capture(piece, sqrMask, to);
+
+		PIECE_T captured = board.getPieceOnSquare<!sideToMove>(to);
+		Capture capture(piece, sqrMask, to, captured);
 		moveList.addCapture(capture);
 	}
 }
@@ -151,15 +155,22 @@ template <bool sideToMove, CHECK_T check, PIECE_T piece>
 inline void iterateOverPinnedPieces(const ChessBoard& board, AllMoves& movesList) {
 	U64 piecesToMove = board.pinnedPiecesByType<sideToMove, piece>();
 	while (piecesToMove) {
+
 		SQUARE_T toMove = getFirstPieceSquare(piecesToMove);
 		U64 sqrMask = popFirstPieceMask(piecesToMove);
-		U64 attacks = MOVE_PROVIDER::getMoves<piece>(board.allPieces(), toMove);
+		U64 attacks;
+		if(piece == QUEEN) {
+			attacks = MOVE_PROVIDER::getMoves<piece>(board.allPieces(), toMove);
+		} else {
+			attacks = MOVE_PROVIDER::getMoves<piece>(board.allPieces(), toMove);
+		}
 
 
+
+		attacks &= getDirection(toMove, board.piecesByType<sideToMove>(KING));
 		if(check) {
 			attacks &= board.checkMap;
 		}
-		attacks &= getDirection(toMove, board.piecesByType<sideToMove>(KING));
 
 		generateCaptures<sideToMove>(board, sqrMask, piece, attacks, movesList);
 		if(check == NO_CHECK) {
