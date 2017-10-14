@@ -30,31 +30,31 @@ namespace PAWNS {
 	inline U64 getPawnBackwardMoveRight(const U64 pawn);
 
 	template <bool sideToMove>
-	inline U64 getFirstPawnRankMask();
+	constexpr inline U64 getFirstPawnRankMask();
 
 	template <bool sideToMove>
-	inline U64 getPromotionRankMask();
+	constexpr inline U64 getPromotionRankMask();
 
 	template <>
-	inline U64 getFirstPawnRankMask<BLACK> () {
+	constexpr inline U64 getFirstPawnRankMask<BLACK> () {
 		return BLACK_FIRST_RANK_PAWNS;
 	}
 
 	template <>
-	inline U64 getFirstPawnRankMask<WHITE> () {
+	constexpr inline U64 getFirstPawnRankMask<WHITE> () {
 		return WHITE_FIRST_RANK_PAWNS;
 	}
 
 	template <bool sideToMove>
-	inline U64 getPromotionRankMask();
+	constexpr inline U64 getPromotionRankMask();
 
 	template <>
-	inline U64 getPromotionRankMask<BLACK> () {
+	constexpr inline U64 getPromotionRankMask<BLACK> () {
 		return BLACK_PROMOTION_RANK_PAWNS;
 	}
 
 	template <>
-	inline U64 getPromotionRankMask<WHITE> () {
+	constexpr inline U64 getPromotionRankMask<WHITE> () {
 		return WHITE_PROMOTION_RANK_PAWNS;
 	}
 
