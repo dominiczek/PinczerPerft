@@ -29,8 +29,8 @@ private:
 	U64 key;
 public:
 	U64 checkMap = 0;
-	U64 pinnedPiecesB = 0;
-	U64 pinnedPiecesR = 0;
+	U64 pinnedToBishop = 0;
+	U64 pinnedToRook = 0;
 	U64 pinnedPawns;
 
 	U64 enPessantSqr;
@@ -64,8 +64,12 @@ public:
 		castle[side] = castleRight;
 	}
 
-	inline U64 getKey() {
+	inline U64 getKey() const {
 		return key;
+	}
+
+	inline void updateKey(U64 moveKey) {
+		key ^= moveKey;
 	}
 
 	inline U64 generateKey(bool sideToMove) {
@@ -90,6 +94,9 @@ public:
 		if(sideToMove) {
 			result ^= ZOBRIST::getZobristBlackMoveKey();
 		}
+
+		 this->key = result;
+
 		return result;
 	}
 
@@ -109,8 +116,8 @@ public:
 
 		copy.enPessantSqr = 0;
 
-		copy.key ^= ZOBRIST::getZobristCastelKey<sideToMove>(copy.castle[sideToMove]);
-		copy.key ^= ZOBRIST::getZobristCastelKey<sideToMove>(NO_CASTLE);
+//		copy.key ^= ZOBRIST::getZobristCastelKey<sideToMove>(copy.castle[sideToMove]);
+//		copy.key ^= ZOBRIST::getZobristCastelKey<sideToMove>(NO_CASTLE);
 
 		copy.castle[sideToMove] = NO_CASTLE;
 
@@ -128,8 +135,8 @@ public:
 
 		copy.enPessantSqr = 0;
 
-		copy.key ^= ZOBRIST::getZobristCastelKey<sideToMove>(copy.castle[sideToMove]);
-		copy.key ^= ZOBRIST::getZobristCastelKey<sideToMove>(NO_CASTLE);
+//		copy.key ^= ZOBRIST::getZobristCastelKey<sideToMove>(copy.castle[sideToMove]);
+//		copy.key ^= ZOBRIST::getZobristCastelKey<sideToMove>(NO_CASTLE);
 
 		copy.castle[sideToMove] = NO_CASTLE;
 
@@ -146,9 +153,9 @@ public:
 
 		copy.enPessantSqr = move.enPessant;
 
-		if(copy.enPessantSqr) {
-			copy.key ^= ZOBRIST::getEnPassantKey(copy.enPessantSqr);
-		}
+//		if(copy.enPessantSqr) {
+//			copy.key ^= ZOBRIST::getEnPassantKey(copy.enPessantSqr);
+//		}
 
 		copy.setCastleRights<sideToMove>(move.maskFrom);
 
@@ -175,7 +182,7 @@ public:
 
 //		copy.removePieceAt<!sideToMove>(move.capturedPieceSquare);
 
-		copy.removePiece<!sideToMove>(move.capturedPieceSquare, copy.getPieceOnSquare<!sideToMove>(move.capturedPieceSquare));
+		copy.removePiece<!sideToMove>(move.capturedPieceSquare, move.capturedPiece);
 
 
 		copy.removePiece<sideToMove>(move.maskFrom, move.piece);
@@ -211,27 +218,19 @@ public:
 
 	template <bool sideToMove>
 	inline PIECE_T getPieceOnSquare(const U64 sqrMask) const {
-//		if(pieces2[sideToMove][PAWN] & sqrMask) {
-//			return PAWN;
-//		}
-//		if(pieces2[sideToMove][KNIGHT] & sqrMask) {
-//			return KNIGHT;
-//		}
-//		if(pieces2[sideToMove][BISHOP] & sqrMask) {
-//			return BISHOP;
-//		}
-//		if(pieces2[sideToMove][QUEEN] & sqrMask) {
-//			return QUEEN;
-//		}
-//		if(pieces2[sideToMove][ROOK] & sqrMask) {
-//			return ROOK;
-//		}
-//
 		return 	pieces2[sideToMove][PAWN]   & sqrMask ? PAWN :
 				pieces2[sideToMove][KNIGHT] & sqrMask ? KNIGHT :
 				pieces2[sideToMove][BISHOP] & sqrMask ? BISHOP :
 				pieces2[sideToMove][QUEEN]  & sqrMask ? QUEEN : ROOK;
-//		return 0;
+	}
+
+	template <bool sideToMove>
+	inline PIECE_T getPieceOnSquare2(const U64 sqrMask) const {
+		return 	pieces2[sideToMove][PAWN]   & sqrMask ? PAWN :
+				pieces2[sideToMove][KNIGHT] & sqrMask ? KNIGHT :
+				pieces2[sideToMove][BISHOP] & sqrMask ? BISHOP :
+				pieces2[sideToMove][QUEEN]  & sqrMask ? QUEEN :
+				pieces2[sideToMove][ROOK]  & sqrMask ? ROOK : KING;
 	}
 
 	template <bool sideToMove>
@@ -267,11 +266,12 @@ public:
 
 	template <bool sideToMove, PIECE_T pieceType>
 	inline U64 pinnedPiecesByType() const {
+
 		if(pieceType == BISHOP) {
-			return pieces2[sideToMove][pieceType] & pinnedPiecesB;
+			return pieces2[sideToMove][pieceType] & pinnedToBishop;
 		}
 		if(pieceType == ROOK) {
-			return pieces2[sideToMove][pieceType] & pinnedPiecesR;
+			return pieces2[sideToMove][pieceType] & pinnedToRook;
 		}
 		return pieces2[sideToMove][pieceType] & getPinnedPieces();
 	}
@@ -280,6 +280,11 @@ public:
 	inline U64 notPinnedPiecesByType() const {
 		return pieces2[sideToMove][pieceType] & ~getPinnedPieces();
 	}
+
+	template <bool sideToMove>
+		inline U64 notPinnedPiecesByType( PIECE_T pieceType) const {
+			return pieces2[sideToMove][pieceType] & ~getPinnedPieces();
+		}
 
 	template <bool sideToMove>
 	inline U64 piecesBySide() const {
@@ -299,12 +304,147 @@ public:
 	}
 
 	inline U64 getPinnedPieces() const {
-		return pinnedPiecesB + pinnedPiecesR;
+		return pinnedToBishop + pinnedToRook;
 	}
 
 	inline bool isDoubleCheck() const {
 		U64 checkers = getCheckers();
 		return checkers & (checkers - 1);
+	}
+
+	template <bool sideToMove>
+	inline U64 createBasicKey(const Move &move) const {
+
+		U64 key = 0;
+
+		key = enPessantSqr ? key^ZOBRIST::getEnPassantKey(enPessantSqr) : key;
+
+		key ^= ZOBRIST::getZobristBlackMoveKey();
+
+		key ^= ZOBRIST::getZobristPieceKey<sideToMove>(move.maskFrom, move.piece);
+
+		key = (castle[sideToMove] && move.maskFrom == kingStartSqr[sideToMove]) ? (key ^ ZOBRIST::getZobristCastelKey<sideToMove>(castle[sideToMove])) : key;
+		key = (castle[sideToMove] && move.maskFrom == kingStartSqr[sideToMove]) ? (key ^ ZOBRIST::getZobristCastelKey<sideToMove>(NO_CASTLE)) : key;
+
+		if((castle[sideToMove] & QUEEN_SIDE) && move.maskFrom == rookStartSqrA[sideToMove]) {
+			key ^= ZOBRIST::getZobristCastelKey<sideToMove>(castle[sideToMove]);
+			key ^= ZOBRIST::getZobristCastelKey<sideToMove>(castle[sideToMove] - QUEEN_SIDE);
+		}
+		if((castle[sideToMove] & KING_SIDE) && move.maskFrom == rookStartSqrH[sideToMove]) {
+			key ^= ZOBRIST::getZobristCastelKey<sideToMove>(castle[sideToMove]);
+			key ^= ZOBRIST::getZobristCastelKey<sideToMove>(castle[sideToMove] - KING_SIDE);
+		}
+
+		return key;
+	}
+
+	template <bool sideToMove>
+	inline U64 createKey(const Move &move) const {
+
+		U64 key = createBasicKey<sideToMove>(move);
+
+		key ^= ZOBRIST::getZobristPieceKey<sideToMove>(move.maskTo, move.piece);
+
+		if(move.enPessant) {
+			key^=ZOBRIST::getEnPassantKey(move.enPessant);
+		}
+
+		return key;
+	}
+
+	template <bool sideToMove>
+	inline U64 createKey(const Capture &move) const {
+
+		U64 key = createBasicKey<sideToMove>(move);
+
+
+		key ^= ZOBRIST::getZobristPieceKey<sideToMove>(move.maskTo, move.piece);
+		key ^= ZOBRIST::getZobristPieceKey<!sideToMove>(move.capturedPieceSquare, move.capturedPiece);
+
+		if((castle[!sideToMove] & QUEEN_SIDE) && move.maskTo == rookStartSqrA[!sideToMove]) {
+			key ^= ZOBRIST::getZobristCastelKey<!sideToMove>(castle[!sideToMove]);
+			key ^= ZOBRIST::getZobristCastelKey<!sideToMove>(castle[!sideToMove] - QUEEN_SIDE);
+		}
+		if((castle[!sideToMove] & KING_SIDE) && move.maskTo == rookStartSqrH[!sideToMove]) {
+			key ^= ZOBRIST::getZobristCastelKey<!sideToMove>(castle[!sideToMove]);
+			key ^= ZOBRIST::getZobristCastelKey<!sideToMove>(castle[!sideToMove] - KING_SIDE);
+		}
+
+		return key;
+	}
+
+	template <bool sideToMove>
+	inline U64 createKey(const Promotion &move) const {
+
+		U64 key = createBasicKey<sideToMove>(move);
+
+		key ^= ZOBRIST::getZobristPieceKey<sideToMove>(move.maskTo, move.promotion);
+
+
+		return key;
+	}
+
+	template <bool sideToMove>
+	inline U64 createKey(const PromotionCapture &move)  const {
+
+		U64 key = createBasicKey<sideToMove>(move);
+
+
+		key ^= ZOBRIST::getZobristPieceKey<sideToMove>(move.maskTo, move.promotion);
+		key ^= ZOBRIST::getZobristPieceKey<!sideToMove>(move.capturedPieceSquare, move.capturedPiece);
+
+		if((castle[!sideToMove] & QUEEN_SIDE) && move.maskTo == rookStartSqrA[!sideToMove]) {
+			key ^= ZOBRIST::getZobristCastelKey<!sideToMove>(castle[!sideToMove]);
+			key ^= ZOBRIST::getZobristCastelKey<!sideToMove>(castle[!sideToMove] - QUEEN_SIDE);
+		}
+		if((castle[!sideToMove] & KING_SIDE) && move.maskTo == rookStartSqrH[!sideToMove]) {
+			key ^= ZOBRIST::getZobristCastelKey<!sideToMove>(castle[!sideToMove]);
+			key ^= ZOBRIST::getZobristCastelKey<!sideToMove>(castle[!sideToMove] - KING_SIDE);
+		}
+
+		return key;
+	}
+
+	template <bool sideToMove>
+	constexpr inline U64 createKeyKingSideCastle()  const {
+
+		U64 key = 0;
+
+		key ^= ZOBRIST::getZobristBlackMoveKey();
+
+		key = enPessantSqr ? key^ZOBRIST::getEnPassantKey(enPessantSqr) : key;
+
+		key ^= ZOBRIST::getZobristPieceKey<sideToMove>(kingStartSqr[sideToMove], KING);
+		key ^= ZOBRIST::getZobristPieceKey<sideToMove>(kingShortCastleSqr[sideToMove], KING);
+
+		key ^= ZOBRIST::getZobristPieceKey<sideToMove>(rookStartSqrH[sideToMove], ROOK);
+		key ^= ZOBRIST::getZobristPieceKey<sideToMove>(rookShortCastleSqr[sideToMove], ROOK);
+
+		key ^= ZOBRIST::getZobristCastelKey<sideToMove>(castle[sideToMove]);
+		key ^= ZOBRIST::getZobristCastelKey<sideToMove>(NO_CASTLE);
+
+		return key;
+	}
+
+	template <bool sideToMove>
+	constexpr inline U64 createKeyQueenSideCastle()  const {
+
+		U64 key = 0;
+
+		key ^= ZOBRIST::getZobristBlackMoveKey();
+
+		key = enPessantSqr ? key^ZOBRIST::getEnPassantKey(enPessantSqr) : key;
+
+		key ^= ZOBRIST::getZobristPieceKey<sideToMove>(kingStartSqr[sideToMove], KING);
+		key ^= ZOBRIST::getZobristPieceKey<sideToMove>(kingLongCastleSqr[sideToMove], KING);
+
+		key ^= ZOBRIST::getZobristPieceKey<sideToMove>(rookStartSqrA[sideToMove], ROOK);
+		key ^= ZOBRIST::getZobristPieceKey<sideToMove>(rookLongCastleSqr[sideToMove], ROOK);
+
+		key ^= ZOBRIST::getZobristCastelKey<sideToMove>(castle[sideToMove]);
+		key ^= ZOBRIST::getZobristCastelKey<sideToMove>(NO_CASTLE);
+
+		return key;
 	}
 
 private:
@@ -314,8 +454,8 @@ private:
 
 		std::memcpy(&copy, this, 136);
 
-		copy.key = enPessantSqr ? key^ZOBRIST::getEnPassantKey(enPessantSqr) : key;
-		copy.key ^= ZOBRIST::getZobristBlackMoveKey();
+//		copy.key = enPessantSqr ? key^ZOBRIST::getEnPassantKey(enPessantSqr) : key;
+//		copy.key ^= ZOBRIST::getZobristBlackMoveKey();
 
 		return copy;
 	}
@@ -328,7 +468,7 @@ private:
 		all_pieces |= mask;
 		pieces2[sideToMove][piece] |= mask;
 
-		key ^= ZOBRIST::getZobristPieceKey<sideToMove>(mask, piece);
+//		key ^= ZOBRIST::getZobristPieceKey<sideToMove>(mask, piece);
 	}
 
 	template <bool sideToMove>
@@ -337,36 +477,43 @@ private:
 		pieces[sideToMove] ^= mask;
 		pieces2[sideToMove][piece] ^= mask;
 
-		key ^= ZOBRIST::getZobristPieceKey<sideToMove>(mask, piece);
+//		key ^= ZOBRIST::getZobristPieceKey<sideToMove>(mask, piece);
 	}
 
 	template <bool sideToMove>
 	inline void setCastleRights(const U64 maskFrom) {
-		if(castle[sideToMove]) {
-			if(maskFrom == kingStartSqr[sideToMove]) {
 
-				key ^= ZOBRIST::getZobristCastelKey<sideToMove>(castle[sideToMove]);
-				key ^= ZOBRIST::getZobristCastelKey<sideToMove>(NO_CASTLE);
 
-				castle[sideToMove] = NO_CASTLE;
-				return;
-			}
-			setCastleRightsRook<sideToMove>(maskFrom);
-		}
+//		if(castle[sideToMove]) {
+//			if(maskFrom == kingStartSqr[sideToMove]) {
+//
+//				key ^= ZOBRIST::getZobristCastelKey<sideToMove>(castle[sideToMove]);
+//				key ^= ZOBRIST::getZobristCastelKey<sideToMove>(NO_CASTLE);
+//
+//			}
+//		}
+		castle[sideToMove] = (maskFrom == kingStartSqr[sideToMove] ? NO_CASTLE : castle[sideToMove]);
+
+		setCastleRightsRook<sideToMove>(maskFrom);
 	}
 
 	template <bool sideToMove>
 	inline void setCastleRightsRook(const U64 square) {
-		if((castle[sideToMove] & QUEEN_SIDE) && square == rookStartSqrA[sideToMove]) {
-			key ^= ZOBRIST::getZobristCastelKey<sideToMove>(castle[sideToMove]);
-			castle[sideToMove]-= QUEEN_SIDE;
-			key ^= ZOBRIST::getZobristCastelKey<sideToMove>(castle[sideToMove]);
-		}
-		if((castle[sideToMove] & KING_SIDE) && square == rookStartSqrH[sideToMove]) {
-			key ^= ZOBRIST::getZobristCastelKey<sideToMove>(castle[sideToMove]);
-			castle[sideToMove]-= KING_SIDE;
-			key ^= ZOBRIST::getZobristCastelKey<sideToMove>(castle[sideToMove]);
-		}
+
+//		if((castle[sideToMove] & QUEEN_SIDE) && square == rookStartSqrA[sideToMove]) {
+//			key ^= ZOBRIST::getZobristCastelKey<sideToMove>(castle[sideToMove]);
+//			key ^= ZOBRIST::getZobristCastelKey<sideToMove>(castle[sideToMove]-QUEEN_SIDE);
+//		}
+//		if((castle[sideToMove] & KING_SIDE) && square == rookStartSqrH[sideToMove]) {
+//			key ^= ZOBRIST::getZobristCastelKey<sideToMove>(castle[sideToMove]);
+//			key ^= ZOBRIST::getZobristCastelKey<sideToMove>(castle[sideToMove]-KING_SIDE);
+//		}
+		castle[sideToMove] -=
+				((castle[sideToMove] & QUEEN_SIDE) && square == rookStartSqrA[sideToMove]) ? QUEEN_SIDE:0;
+		castle[sideToMove] -=
+				((castle[sideToMove] & KING_SIDE) && square == rookStartSqrH[sideToMove]) ? KING_SIDE:0;
+
+
 	}
 
 };
