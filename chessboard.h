@@ -5,17 +5,7 @@
 #include <cstring>
 
 #include "moves.h"
-#include "moves_provider.h"
 #include "zobrist.h"
-
-using namespace std;
-
-class ChessBoard;
-
-
-
-void printChessBoard(const ChessBoard &chessBoard);
-void printBitMap(U64 bitMap, char c);
 
 class ChessBoard {
 	
@@ -72,7 +62,7 @@ public:
 		key ^= moveKey;
 	}
 
-	inline U64 generateKey(bool sideToMove) {
+	inline void initKey(bool sideToMove) {
 		U64 result = 0;
 
 		for(int pieceType=0;pieceType<6;pieceType++) {
@@ -95,9 +85,7 @@ public:
 			result ^= ZOBRIST::getZobristBlackMoveKey();
 		}
 
-		 this->key = result;
-
-		return result;
+		this->key = result;
 	}
 
 	template <bool sideToMove>
@@ -116,9 +104,6 @@ public:
 
 		copy.enPessantSqr = 0;
 
-//		copy.key ^= ZOBRIST::getZobristCastelKey<sideToMove>(copy.castle[sideToMove]);
-//		copy.key ^= ZOBRIST::getZobristCastelKey<sideToMove>(NO_CASTLE);
-
 		copy.castle[sideToMove] = NO_CASTLE;
 
 		return copy;
@@ -134,10 +119,6 @@ public:
 		copy.addPiece<sideToMove>(rookLongCastleSqr[sideToMove], ROOK);
 
 		copy.enPessantSqr = 0;
-
-//		copy.key ^= ZOBRIST::getZobristCastelKey<sideToMove>(copy.castle[sideToMove]);
-//		copy.key ^= ZOBRIST::getZobristCastelKey<sideToMove>(NO_CASTLE);
-
 		copy.castle[sideToMove] = NO_CASTLE;
 
 		return copy;
@@ -152,10 +133,6 @@ public:
 		copy.addPiece<sideToMove>(move.maskTo, move.piece);
 
 		copy.enPessantSqr = move.enPessant;
-
-//		if(copy.enPessantSqr) {
-//			copy.key ^= ZOBRIST::getEnPassantKey(copy.enPessantSqr);
-//		}
 
 		copy.setCastleRights<sideToMove>(move.maskFrom);
 
@@ -180,16 +157,11 @@ public:
 
 		ChessBoard copy = createCopy();
 
-//		copy.removePieceAt<!sideToMove>(move.capturedPieceSquare);
-
 		copy.removePiece<!sideToMove>(move.capturedPieceSquare, move.capturedPiece);
-
-
 		copy.removePiece<sideToMove>(move.maskFrom, move.piece);
 		copy.addPiece<sideToMove>(move.maskTo, move.piece);
 
 		copy.enPessantSqr = 0;
-
 		copy.setCastleRights<sideToMove>(move.maskFrom);
 		copy.setCastleRightsRook<!sideToMove>(move.capturedPieceSquare);
 
@@ -201,15 +173,11 @@ public:
 
 		ChessBoard copy = createCopy();
 
-//		copy.removePieceAt<!sideToMove>(move.maskTo);
-
-		copy.removePiece<!sideToMove>(move.maskTo, copy.getPieceOnSquare<!sideToMove>(move.maskTo));
-
+		copy.removePiece<!sideToMove>(move.maskTo, move.capturedPiece);
 		copy.removePiece<sideToMove>(move.maskFrom, PAWN);
 		copy.addPiece<sideToMove>(move.maskTo, move.promotion);
 
 		copy.enPessantSqr = 0;
-
 		copy.setCastleRightsRook<!sideToMove>(move.maskTo);
 
 		return copy;
@@ -278,13 +246,13 @@ public:
 
 	template <bool sideToMove, PIECE_T pieceType>
 	inline U64 notPinnedPiecesByType() const {
-		return pieces2[sideToMove][pieceType] & ~getPinnedPieces();
+		return exclude(pieces2[sideToMove][pieceType], getPinnedPieces());
 	}
 
 	template <bool sideToMove>
-		inline U64 notPinnedPiecesByType( PIECE_T pieceType) const {
-			return pieces2[sideToMove][pieceType] & ~getPinnedPieces();
-		}
+	inline U64 notPinnedPiecesByType( PIECE_T pieceType) const {
+		return exclude(pieces2[sideToMove][pieceType], getPinnedPieces());
+	}
 
 	template <bool sideToMove>
 	inline U64 piecesBySide() const {
