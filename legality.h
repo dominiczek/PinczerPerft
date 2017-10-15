@@ -170,7 +170,7 @@ inline U64 setCheckAndPinners(ChessBoard& board) {
 	U64 pawnsToMove = board.piecesByType<sideToMove>(PAWN);
 	U64 pawnAttacks = PAWNS::getPawnAttacks<sideToMove>(pawnsToMove);
 
-	U64 allKingMoves = kingMoves[sqr] & ~pawnAttacks;
+	U64 allKingMoves = exclude(kingMoves[sqr], pawnAttacks);
 
 	if (pawnAttacks & king) {
 		board.checkMap += PAWNS::getPawnAttacks<!sideToMove>(pawnAttacks & king) & pawnsToMove;

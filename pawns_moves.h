@@ -9,8 +9,8 @@
 template <bool sideToMove, CHECK_T isCheck>
 inline void generatePawnMoves(const ChessBoard &board,  const U64 pawns, AllMoves &moveList) {
 
-	U64 notPinedPawns = pawns & ~board.pinnedPawns;
-	U64 legalPawnMoves = moveForward<sideToMove>(notPinedPawns, 8) & ~board.allPieces();
+	U64 notPinedPawns = exclude(pawns , board.pinnedPawns);
+	U64 legalPawnMoves = exclude(moveForward<sideToMove>(notPinedPawns, 8), board.allPieces());
 
 	if(isCheck == CHECK){
 		legalPawnMoves &= board.checkMap;
@@ -28,8 +28,8 @@ inline void generatePawnMoves(const ChessBoard &board,  const U64 pawns, AllMove
 template <bool sideToMove>
 inline void generateFirstRankPawnMovesCheck(const ChessBoard &board,  const U64 pawns, AllMoves &moveList) {
 
-	U64 legalPawnMoves = moveForward<sideToMove>(pawns, 8) & ~board.allPieces();
-	U64 legalTowSquareMoves = moveForward<sideToMove>(legalPawnMoves, 8) & ~board.allPieces();
+	U64 legalPawnMoves = exclude(moveForward<sideToMove>(pawns, 8), board.allPieces());
+	U64 legalTowSquareMoves = exclude(moveForward<sideToMove>(legalPawnMoves, 8), board.allPieces());
 
 	legalPawnMoves &= board.checkMap;
 	legalTowSquareMoves &= board.checkMap;
@@ -68,7 +68,7 @@ inline void generateFirstRankPawnMoves(const ChessBoard &board, const U64 pawns,
 		U64 enPassantPawns = board.piecesByType<!sideToMove>(PAWN) & EN_PASSANT_RANK[!sideToMove];
 		U64 enPassantAttacks = PAWNS::getPawnAttacks<!sideToMove>(enPassantPawns);
 
-		U64 legalPawnMoves = moveForward<sideToMove>(notPinedPawns, 8) & ~board.allPieces();
+		U64 legalPawnMoves = exclude(moveForward<sideToMove>(notPinedPawns, 8), board.allPieces());
 
 		while(legalPawnMoves) {
 			U64 move = popFirstPieceMask(legalPawnMoves);
@@ -78,7 +78,8 @@ inline void generateFirstRankPawnMoves(const ChessBoard &board, const U64 pawns,
 			moveList.addMove(m);
 
 			U64 moveByTwoSqr = moveForward<sideToMove>(move, 8);
-			if(moveByTwoSqr & ~board.allPieces()) {
+			//TODO: change!
+			if(!(moveByTwoSqr & board.allPieces())) {
 				PawnMove m2(PAWN, from, moveByTwoSqr, (move & enPassantAttacks));
 				moveList.addMove(m2);
 			}
@@ -169,7 +170,7 @@ inline void generatePawnCaptures(const ChessBoard &board, const U64 pawns, AllMo
 template <bool sideToMove, CHECK_T check>
 inline void generatePawnPromotions(const ChessBoard &board,  const U64 pawns, AllMoves &moveList) {
 
-	U64 pawnsToMove = moveForward<sideToMove>(pawns & ~board.getPinnedPieces(), 8) & ~board.allPieces();
+	U64 pawnsToMove = exclude(moveForward<sideToMove>( exclude(pawns, board.getPinnedPieces()), 8), board.allPieces());
 
 	if(check) {
 		pawnsToMove &= board.checkMap;
@@ -261,7 +262,7 @@ inline void generatePawnsMoves(const ChessBoard &board, AllMoves &moveList) {
 		pawnsToMove -= promotionPawns;
 	}
 
-	U64 pawnsToMakeCapture = pawnsToMove - (pawnsToMove & board.pinnedToRook);
+	U64 pawnsToMakeCapture = exclude(pawnsToMove, board.pinnedToRook);
 
 	generateEnPassant<sideToMove>(board, pawnsToMakeCapture, moveList);
 	generatePawnCaptures<sideToMove, check>(board, pawnsToMakeCapture, moveList);
