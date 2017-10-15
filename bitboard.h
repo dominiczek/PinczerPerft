@@ -31,15 +31,15 @@ inline U64 moveBackward<WHITE>(const U64 sqrMask, const int delta) {
 	return sqrMask >> delta;
 }
 
-inline SQUARE_T getFirstPieceSquare(const U64 &board) {
+inline SQUARE_T getFirstPieceSquare(const U64 board) {
 	return __builtin_ctzll(board);
 }
 
-inline U64 getFirstPieceMask(const U64 &board) {
+inline U64 getFirstPieceMask(const U64 board) {
 	return board & -board;
 }
 
-inline U64 getLastPieceMask(const U64 &board) {
+inline U64 getLastPieceMask(const U64 board) {
 	return TWO_TO_63 >> __builtin_clzll(board);
 }
 
@@ -51,6 +51,10 @@ inline U64 popFirstPieceMask(U64 &board) {
 
 inline int popCount(U64 board) {
 	return __builtin_popcountll(board);
+}
+
+inline U64 exclude(const U64 board, const U64 toExclude) {
+	return board - (board & toExclude);
 }
 
 
