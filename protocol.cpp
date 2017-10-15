@@ -3,8 +3,9 @@
 #include <cctype>
 #include <string>
 
-
+#include "moves_provider.h"
 #include "fen_parser.h"
+#include "chessboard_utils.h"
 #include "cache.h"
 
 using namespace std;

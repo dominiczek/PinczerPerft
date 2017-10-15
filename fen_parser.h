@@ -5,19 +5,19 @@
 
 namespace FEN_PARSER {
 
-	bool parseFen(ChessBoard &board, string fenString);
+	bool parseFen(ChessBoard &board, std::string fenString);
 
-	SQUARE_T parseSquare(string squareCode);
+	SQUARE_T parseSquare(std::string squareCode);
 
-	U64 parseSquareMap(string squareCode);
+	U64 parseSquareMap(std::string squareCode);
 
 
 	template <bool sideToMove>
-	ChessBoard makeMove(const ChessBoard &board, string move);
+	ChessBoard makeMove(const ChessBoard &board, std::string move);
 
-	ChessBoard makeMove(bool &siedToMove, ChessBoard &board, string move);
+	ChessBoard makeMove(bool &siedToMove, ChessBoard &board, std::string move);
 
-	ChessBoard makeMovesList(bool &siedToMove, ChessBoard &board, string moves);
+	ChessBoard makeMovesList(bool &siedToMove, ChessBoard &board, std::string moves);
 
 }
 #endif
