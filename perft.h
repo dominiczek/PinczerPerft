@@ -7,7 +7,8 @@
 #include "pawns_moves.h"
 #include "zobrist.h"
 #include "cache.h"
-
+#include "pawn_bulk.h"
+#include "moves_bulk.h"
 
 template <bool sideToMove, bool useCache>
 U64 Perft(const ChessBoard &board, AllMoves &allMoves, U64 kingsMoves, int depth);
@@ -109,40 +110,31 @@ inline U64 castleLong(const ChessBoard &board, int depth) {
 template <bool sideToMove, CHECK_T check, bool useCache>
 U64 Perft(ChessBoard &board, U64 kingsMoves, AllMoves &allMoves, int depth) {
 
-	if(check != DOUBLE_CHECK) {
-		generateMoves<sideToMove, check>(board, allMoves);
-		generatePawnsMoves<sideToMove, check>(board, allMoves);
-	}
-	generateMovesAndCapturesForKing<sideToMove>(kingsMoves, board, allMoves);
-
-	if(check == NO_CHECK) {
-		if(isQueenSideCastlePossible<sideToMove>(board)) {
-			allMoves.addQueenSideCastle();
-		}
-
-		if(isKingSideCastlePossible<sideToMove>(board)) {
-			allMoves.addKingSideCastle();
-		}
-	}
+    U64 nodes = 0;
 
     if(depth > 1) {
 
     	depth--;
-    	U64 nodes = 0;
+    	if(check != DOUBLE_CHECK) {
+    		generateMoves<sideToMove, check>(board, allMoves);
+    		generatePawnsMoves<sideToMove, check>(board, allMoves);
+    	}
+    	generateMovesAndCapturesForKing<sideToMove>(kingsMoves, board, allMoves);
+
 
     	nodes += iterateOverMoves<sideToMove, Capture, useCache>(board, allMoves.captures, depth);
     	nodes += iterateOverMoves<sideToMove, Move, useCache>(board, allMoves.moves, depth);
     	nodes += iterateOverMoves<sideToMove, Promotion, useCache>(board, allMoves.promotions, depth);
     	nodes += iterateOverMoves<sideToMove, PromotionCapture, useCache>(board, allMoves.promotionCaptures, depth);
 
-
-    	if(!check) {
-			if(allMoves.longCastle) {
+    	if(check == NO_CHECK) {
+    		if(isQueenSideCastlePossible<sideToMove>(board)) {
 				nodes += castleLong<sideToMove, useCache>(board, depth);
-			}
-			if(allMoves.shortCastle) {
+    		}
+
+    		if(isKingSideCastlePossible<sideToMove>(board)) {
 				nodes += castleShort<sideToMove, useCache>(board, depth);
-			}
+    		}
     	}
 
     	if(useCache) {
@@ -150,7 +142,17 @@ U64 Perft(ChessBoard &board, U64 kingsMoves, AllMoves &allMoves, int depth) {
     	}
     	return nodes;
     } else {
-    	U64 nodes = allMoves.allMovesCount();
+    	if(check != DOUBLE_CHECK) {
+    		nodes += countMoves<sideToMove, check>(board);
+    		nodes += countPawnsMoves<sideToMove, check>(board);
+    	}
+    	nodes += countMovesAndCapturesForKing<sideToMove>(kingsMoves, board);
+
+    	if(check == NO_CHECK) {
+			nodes += isQueenSideCastlePossible<sideToMove>(board);
+			nodes += isKingSideCastlePossible<sideToMove>(board);
+    	}
+
     	if(useCache) {
     		CACHE::put(board.getKey() ^ ZOBRIST::getDepthKey(1), nodes);
     	}

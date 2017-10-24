@@ -241,6 +241,11 @@ public:
 		if(pieceType == ROOK) {
 			return pieces2[sideToMove][pieceType] & pinnedToRook;
 		}
+
+//		if(pieceType == QUEEN) {
+//			return pieces2[sideToMove][pieceType] & pinnedToRook;
+//		}
+
 		return pieces2[sideToMove][pieceType] & getPinnedPieces();
 	}
 
